@@ -47,6 +47,17 @@
       font-size: 20px;
       z-index: 10;
     }
+    #game-over {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: red;
+      font-size: 48px;
+      font-family: sans-serif;
+      z-index: 10;
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -58,6 +69,7 @@
     <button onclick="move('down')">⬇️</button>
     <button onclick="move('right')">➡️</button>
   </div>
+  <div id="game-over">GAME OVER</div>
   <script>
     const canvas = document.getElementById("gameCanvas");
     const ctx = canvas.getContext("2d");
@@ -71,7 +83,8 @@
 
     const tileSize = 40;
 
-    const map = [
+    const map = [...Array(11)].map(() => Array(21).fill(0)); // placeholder filled below
+    const rawMap = [
       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
       [1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1],
       [1,2,1,1,1,1,2,1,1,2,1,2,1,1,2,1,1,1,2,1,1],
@@ -84,6 +97,11 @@
       [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
       [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
+    for (let y = 0; y < rawMap.length; y++) {
+      for (let x = 0; x < rawMap[y].length; x++) {
+        map[y][x] = rawMap[y][x];
+      }
+    }
 
     const player = {
       x: 1,
@@ -95,9 +113,15 @@
     };
     player.image.src = "pacman.png";
 
+    const ghosts = [
+      { x: 10, y: 5, px: 10 * tileSize, py: 5 * tileSize, color: "red", dx: 1, dy: 0 },
+      { x: 15, y: 8, px: 15 * tileSize, py: 8 * tileSize, color: "pink", dx: -1, dy: 0 }
+    ];
+
     let currentDirection = null;
     let nextDirection = null;
     let score = 0;
+    let gameOver = false;
 
     function canMoveTo(x, y) {
       if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false;
@@ -120,7 +144,39 @@
       }
     }
 
+    function updateGhosts() {
+      ghosts.forEach(g => {
+        let nextX = g.x + g.dx;
+        let nextY = g.y + g.dy;
+        if (!canMoveTo(nextX, nextY)) {
+          const dirs = [
+            { dx: 1, dy: 0 }, { dx: -1, dy: 0 },
+            { dx: 0, dy: 1 }, { dx: 0, dy: -1 }
+          ];
+          const valid = dirs.filter(d => canMoveTo(g.x + d.dx, g.y + d.dy));
+          const pick = valid[Math.floor(Math.random() * valid.length)];
+          g.dx = pick.dx;
+          g.dy = pick.dy;
+        } else {
+          g.x += g.dx;
+          g.y += g.dy;
+        }
+        g.px = g.x * tileSize;
+        g.py = g.y * tileSize;
+      });
+    }
+
+    function checkCollision() {
+      for (const g of ghosts) {
+        if (Math.abs(player.px - g.px) < tileSize * 0.5 && Math.abs(player.py - g.py) < tileSize * 0.5) {
+          document.getElementById("game-over").style.display = "block";
+          gameOver = true;
+        }
+      }
+    }
+
     function update() {
+      if (gameOver) return;
       tryChangeDirection();
 
       if (!currentDirection) return;
@@ -150,9 +206,7 @@
         checkY = Math.floor((newPy + player.size) / tileSize);
       }
 
-      if (!canMoveTo(checkX, checkY)) {
-        return;
-      }
+      if (!canMoveTo(checkX, checkY)) return;
 
       player.px = newPx;
       player.py = newPy;
@@ -164,6 +218,9 @@
         score++;
         document.getElementById("score").textContent = "Score: " + score;
       }
+
+      updateGhosts();
+      checkCollision();
     }
 
     function drawMap() {
@@ -193,11 +250,21 @@
       ctx.drawImage(player.image, player.px, player.py, player.size, player.size);
     }
 
+    function drawGhosts() {
+      ghosts.forEach(g => {
+        ctx.fillStyle = g.color;
+        ctx.beginPath();
+        ctx.arc(g.px + tileSize / 2, g.py + tileSize / 2, tileSize / 2.5, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
+
     function loop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       update();
       drawMap();
       drawPlayer();
+      drawGhosts();
       requestAnimationFrame(loop);
     }
 
