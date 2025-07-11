@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pacman NFT Jouable - Déplacement Continu</title>
+<title>Pacman NFT Jouable - Collision améliorée</title>
 <style>
   html, body {
     margin: 0; padding: 0; overflow: hidden; background: black; height: 100%;
@@ -92,13 +92,13 @@
     py: 1 * tileSize,
     image: new Image()
   };
-  player.image.src = "pacman.png"; // Ton image custom ici
+  player.image.src = "pacman.png";
 
   let score = 0;
   const maxScore = map.flat().filter(x=>x===2).length;
 
-  let currentDirection = null;   // direction actuelle
-  let nextDirection = null;      // direction souhaitée
+  let currentDirection = null;
+  let nextDirection = null;
 
   function canMoveTo(x, y) {
     if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false;
@@ -129,7 +129,7 @@
 
     tryChangeDirection();
 
-    const speed = 4; // pixels/frame
+    const speed = 4;
 
     let dx = 0, dy = 0;
     switch (currentDirection) {
@@ -139,41 +139,56 @@
       case "right": dx = speed; break;
     }
 
+    // Calcul position projetée
     let newPx = player.px + dx;
     let newPy = player.py + dy;
 
-    // Centre du joueur pour calcul case
-    let centerX = newPx + player.size / 2;
-    let centerY = newPy + player.size / 2;
+    // Calcul bord du joueur selon direction
+    // On veut vérifier la prochaine case où le bord sera
+    let checkX = player.x;
+    let checkY = player.y;
 
-    let targetTileX = Math.floor(centerX / tileSize);
-    let targetTileY = Math.floor(centerY / tileSize);
+    // Ajuste selon la direction, on check la case suivante côté bord joueur
+    if (currentDirection === "left") {
+      checkX = Math.floor((newPx) / tileSize);
+      checkY = player.y;
+    } else if (currentDirection === "right") {
+      checkX = Math.floor((newPx + player.size) / tileSize);
+      checkY = player.y;
+    } else if (currentDirection === "up") {
+      checkX = player.x;
+      checkY = Math.floor((newPy) / tileSize);
+    } else if (currentDirection === "down") {
+      checkX = player.x;
+      checkY = Math.floor((newPy + player.size) / tileSize);
+    }
 
-    if (!canMoveTo(targetTileX, targetTileY)) {
-      // Bloquer au bord de la case actuelle
+    if (!canMoveTo(checkX, checkY)) {
+      // Bloque Pacman juste avant le mur (sans rentrer dedans)
       switch (currentDirection) {
         case "left":
-          newPx = player.x * tileSize;
+          newPx = (player.x) * tileSize;
           break;
         case "right":
-          newPx = player.x * tileSize;
+          newPx = (player.x + 1) * tileSize - player.size;
           break;
         case "up":
-          newPy = player.y * tileSize;
+          newPy = (player.y) * tileSize;
           break;
         case "down":
-          newPy = player.y * tileSize;
+          newPy = (player.y + 1) * tileSize - player.size;
           break;
       }
-      currentDirection = null;
+      currentDirection = null; // stoppe le mouvement
     } else {
       player.px = newPx;
       player.py = newPy;
 
+      // Mise à jour des coordonnées case à partir du centre du joueur
       player.x = Math.floor((player.px + player.size / 2) / tileSize);
       player.y = Math.floor((player.py + player.size / 2) / tileSize);
 
-      // Ramasser les points
+      // Ramasse les points
       if (map[player.y][player.x] === 2) {
         map[player.y][player.x] = 0;
         score++;
@@ -231,7 +246,6 @@
 
   gameLoop();
 
-  // Fonction appelée par boutons mobiles et clavier
   function move(dir) {
     nextDirection = dir;
     if (!currentDirection) {
@@ -261,4 +275,3 @@
 
 </body>
 </html>
-
