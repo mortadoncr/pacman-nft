@@ -47,6 +47,33 @@
       font-size: 20px;
       z-index: 10;
     }
+    #end-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      color: #ff0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      font-family: monospace;
+      font-size: 30px;
+      z-index: 20;
+      display: none;
+    }
+    #end-screen button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 20px;
+      background: #ff0;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -57,6 +84,10 @@
     <button onclick="move('left')">⬅️</button>
     <button onclick="move('down')">⬇️</button>
     <button onclick="move('right')">➡️</button>
+  </div>
+  <div id="end-screen">
+    <div>🎉 Bravo ! Vous avez tout mangé !</div>
+    <button onclick="restartGame()">Rejouer</button>
   </div>
   <script>
     const canvas = document.getElementById("gameCanvas");
@@ -71,19 +102,19 @@
 
     const tileSize = 40;
 
-    const map = [
-      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-      [1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1],
-      [1,2,1,1,1,1,2,1,1,2,1,2,1,1,2,1,1,1,2,1,1],
-      [1,2,1,2,2,1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,1],
-      [1,2,1,2,1,1,1,1,1,2,1,2,1,1,1,1,2,1,1,2,1],
-      [1,2,2,2,1,2,2,2,1,2,1,2,1,2,2,2,2,1,2,2,1],
-      [1,1,1,2,1,2,1,2,1,2,1,2,1,2,1,1,1,1,2,1,1],
-      [1,2,2,2,2,2,1,2,2,2,2,2,1,2,2,2,2,2,2,2,1],
-      [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
-      [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    const originalMap = [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,2,2,2,1,2,2,2,2,2,2,1,2,2,1],
+      [1,2,1,2,1,2,1,1,1,1,2,1,2,2,1],
+      [1,2,1,2,2,2,2,2,1,2,2,2,1,2,1],
+      [1,2,1,1,1,1,1,2,1,1,1,1,1,2,1],
+      [1,2,2,2,2,2,1,2,2,2,2,2,2,2,1],
+      [1,1,1,1,1,2,1,1,1,1,1,2,1,1,1],
+      [1,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
     ];
+
+    let map = JSON.parse(JSON.stringify(originalMap));
 
     const player = {
       x: 1,
@@ -122,10 +153,9 @@
 
     function update() {
       tryChangeDirection();
-
       if (!currentDirection) return;
 
-      const speed = 4 / 3; // vitesse réduite par 3
+      const speed = (4 / 3) * 1.3;
       let dx = 0, dy = 0;
       switch (currentDirection) {
         case "up": dy = -speed; break;
@@ -140,19 +170,12 @@
       let checkX = player.x;
       let checkY = player.y;
 
-      if (currentDirection === "left") {
-        checkX = Math.floor(newPx / tileSize);
-      } else if (currentDirection === "right") {
-        checkX = Math.floor((newPx + player.size) / tileSize);
-      } else if (currentDirection === "up") {
-        checkY = Math.floor(newPy / tileSize);
-      } else if (currentDirection === "down") {
-        checkY = Math.floor((newPy + player.size) / tileSize);
-      }
+      if (currentDirection === "left") checkX = Math.floor(newPx / tileSize);
+      else if (currentDirection === "right") checkX = Math.floor((newPx + player.size) / tileSize);
+      else if (currentDirection === "up") checkY = Math.floor(newPy / tileSize);
+      else if (currentDirection === "down") checkY = Math.floor((newPy + player.size) / tileSize);
 
-      if (!canMoveTo(checkX, checkY)) {
-        return;
-      }
+      if (!canMoveTo(checkX, checkY)) return;
 
       player.px = newPx;
       player.py = newPy;
@@ -163,7 +186,30 @@
         map[player.y][player.x] = 0;
         score++;
         document.getElementById("score").textContent = "Score: " + score;
+        checkWin();
       }
+    }
+
+    function checkWin() {
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          if (map[y][x] === 2) return;
+        }
+      }
+      document.getElementById("end-screen").style.display = "flex";
+    }
+
+    function restartGame() {
+      map = JSON.parse(JSON.stringify(originalMap));
+      score = 0;
+      currentDirection = null;
+      nextDirection = null;
+      player.x = 1;
+      player.y = 1;
+      player.px = tileSize;
+      player.py = tileSize;
+      document.getElementById("score").textContent = "Score: 0";
+      document.getElementById("end-screen").style.display = "none";
     }
 
     function drawMap() {
