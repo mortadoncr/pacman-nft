@@ -1,357 +1,161 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pacman NFT avec Fantômes et Game Over</title>
-<style>
-  html, body {
-    margin: 0; padding: 0; overflow: hidden; background: black; height: 100%;
-  }
-  canvas {
-    display: block;
-    margin: 0 auto;
-    background: #111;
-    width: 100vw;
-    height: 100vh;
-  }
-  #mobile-controls {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 15px;
-    z-index: 10;
-  }
-  #mobile-controls button {
-    width: 60px; height: 60px;
-    font-size: 24px;
-    border-radius: 50%;
-    border: none;
-    background: #ff0;
-    font-weight: bold;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-  }
-  #score {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    color: #ff0;
-    font-family: monospace;
-    font-size: 20px;
-    z-index: 10;
-  }
-  #gameover {
-    position: fixed;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    color: red;
-    font-size: 48px;
-    font-family: monospace;
-    text-shadow: 0 0 10px black;
-    display: none;
-    z-index: 20;
-  }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pacman NFT</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: black;
+      height: 100%;
+    }
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background: #111;
+      width: 100vw;
+      height: 100vh;
+    }
+    #mobile-controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      z-index: 10;
+    }
+    #mobile-controls button {
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+      border-radius: 50%;
+      border: none;
+      background: #ff0;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+    #score {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      color: #ff0;
+      font-family: monospace;
+      font-size: 20px;
+      z-index: 10;
+    }
+  </style>
 </head>
 <body>
+  <canvas id="gameCanvas"></canvas>
+  <div id="score">Score: 0</div>
+  <div id="mobile-controls">
+    <button onclick="move('up')">⬆️</button>
+    <button onclick="move('left')">⬅️</button>
+    <button onclick="move('down')">⬇️</button>
+    <button onclick="move('right')">➡️</button>
+  </div>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-<canvas id="gameCanvas"></canvas>
-
-<div id="score">Score: 0</div>
-<div id="gameover">GAME OVER 😵‍💫</div>
-
-<div id="mobile-controls">
-  <button onclick="move('up')">⬆️</button>
-  <button onclick="move('left')">⬅️</button>
-  <button onclick="move('down')">⬇️</button>
-  <button onclick="move('right')">➡️</button>
-</div>
-
-<script>
-  const canvas = document.getElementById("gameCanvas");
-  const ctx = canvas.getContext("2d");
-
-  function resize() {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-  }
-  window.addEventListener("resize", resize);
-  resize();
-
-  const tileSize = 40;
-
-  // Labyrinthe plus grand: 21x15
-  // 0 = vide, 1 = mur, 2 = pastille à manger
-  const map = [
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,2,2,2,1,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,1],
-    [1,2,1,2,1,2,1,1,1,1,2,1,2,1,1,1,1,1,1,2,1],
-    [1,2,1,2,2,2,2,2,2,1,2,2,2,1,2,2,2,2,1,2,1],
-    [1,2,1,1,1,1,1,1,2,1,1,1,2,1,2,1,1,2,1,2,1],
-    [1,2,2,2,2,2,2,1,2,2,2,2,2,1,2,2,1,2,2,2,1],
-    [1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,2,1],
-    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,1],
-    [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,2,1],
-    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
-    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-    [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-    [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  ];
-
-  // Player pacman
-  const player = {
-    x: 1,
-    y: 1,
-    size: tileSize * 0.8,
-    px: 1 * tileSize,
-    py: 1 * tileSize,
-    image: new Image()
-  };
-  player.image.src = "pacman.png";
-
-  // Fantômes
-  class Phantom {
-    constructor(x, y, color) {
-      this.x = x;
-      this.y = y;
-      this.px = x * tileSize;
-      this.py = y * tileSize;
-      this.size = tileSize * 0.8;
-      this.color = color;
-      this.speed = 2;
-      this.direction = null;
-      this.possibleDirections = ["up", "down", "left", "right"];
-      this.moveCooldown = 0;
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     }
+    window.addEventListener("resize", resize);
+    resize();
 
-    canMoveTo(x, y) {
+    const tileSize = 40;
+
+    const map = [
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+      [1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1],
+      [1,2,1,1,1,1,2,1,1,2,1,2,1,1,2,1,1,1,2,1,1],
+      [1,2,1,2,2,1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,1],
+      [1,2,1,2,1,1,1,1,1,2,1,2,1,1,1,1,2,1,1,2,1],
+      [1,2,2,2,1,2,2,2,1,2,1,2,1,2,2,2,2,1,2,2,1],
+      [1,1,1,2,1,2,1,2,1,2,1,2,1,2,1,1,1,1,2,1,1],
+      [1,2,2,2,2,2,1,2,2,2,2,2,1,2,2,2,2,2,2,2,1],
+      [1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1],
+      [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
+      [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+    ];
+
+    const player = {
+      x: 1,
+      y: 1,
+      size: tileSize * 0.8,
+      px: 1 * tileSize,
+      py: 1 * tileSize,
+      image: new Image()
+    };
+    player.image.src = "pacman.png";
+
+    let currentDirection = null;
+    let nextDirection = null;
+    let score = 0;
+
+    function canMoveTo(x, y) {
       if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false;
       return map[y][x] !== 1;
     }
 
-    pickDirection() {
-      // Choisir une nouvelle direction aléatoire qui est valide et différente de la direction opposée
-      const opposites = {
-        up: "down",
-        down: "up",
-        left: "right",
-        right: "left",
-      };
-      const validDirs = this.possibleDirections.filter(dir => {
-        if (dir === opposites[this.direction]) return false;
-        let nx = this.x;
-        let ny = this.y;
-        switch(dir) {
-          case "up": ny -= 1; break;
-          case "down": ny += 1; break;
-          case "left": nx -= 1; break;
-          case "right": nx += 1; break;
-        }
-        return this.canMoveTo(nx, ny);
-      });
-      if (validDirs.length === 0) {
-        // Si aucune direction valide sauf opposée, on peut retourner en arrière
-        return opposites[this.direction];
-      }
-      return validDirs[Math.floor(Math.random() * validDirs.length)];
-    }
-
-    update() {
-      if (this.moveCooldown > 0) {
-        this.moveCooldown--;
-        this.movePixel();
-        return;
-      }
-
-      if (!this.direction || !this.canMoveNext()) {
-        this.direction = this.pickDirection();
-      }
-      this.movePixel();
-    }
-
-    canMoveNext() {
-      let nx = this.x;
-      let ny = this.y;
-      switch (this.direction) {
+    function tryChangeDirection() {
+      if (!nextDirection) return;
+      let nx = player.x;
+      let ny = player.y;
+      switch (nextDirection) {
         case "up": ny -= 1; break;
         case "down": ny += 1; break;
         case "left": nx -= 1; break;
         case "right": nx += 1; break;
       }
-      return this.canMoveTo(nx, ny);
+      if (canMoveTo(nx, ny)) {
+        currentDirection = nextDirection;
+        nextDirection = null;
+      }
     }
 
-    movePixel() {
-      const speed = this.speed;
+    function update() {
+      tryChangeDirection();
+
+      if (!currentDirection) return;
+
+      const speed = 4;
       let dx = 0, dy = 0;
-      switch (this.direction) {
+      switch (currentDirection) {
         case "up": dy = -speed; break;
         case "down": dy = speed; break;
         case "left": dx = -speed; break;
         case "right": dx = speed; break;
       }
-      let newPx = this.px + dx;
-      let newPy = this.py + dy;
 
-      // Vérifier collision avec mur au pixel près
-      let checkX = this.x;
-      let checkY = this.y;
+      let newPx = player.px + dx;
+      let newPy = player.py + dy;
 
-      if (this.direction === "left") {
+      let checkX = player.x;
+      let checkY = player.y;
+
+      if (currentDirection === "left") {
         checkX = Math.floor(newPx / tileSize);
-        checkY = this.y;
-      } else if (this.direction === "right") {
-        checkX = Math.floor((newPx + this.size) / tileSize);
-        checkY = this.y;
-      } else if (this.direction === "up") {
-        checkX = this.x;
+      } else if (currentDirection === "right") {
+        checkX = Math.floor((newPx + player.size) / tileSize);
+      } else if (currentDirection === "up") {
         checkY = Math.floor(newPy / tileSize);
-      } else if (this.direction === "down") {
-        checkX = this.x;
-        checkY = Math.floor((newPy + this.size) / tileSize);
+      } else if (currentDirection === "down") {
+        checkY = Math.floor((newPy + player.size) / tileSize);
       }
 
-      if (!this.canMoveTo(checkX, checkY)) {
-        // Bloquer position et reset cooldown pour choisir une nouvelle direction dans quelques frames
-        switch (this.direction) {
-          case "left": newPx = this.x * tileSize; break;
-          case "right": newPx = (this.x + 1) * tileSize - this.size; break;
-          case "up": newPy = this.y * tileSize; break;
-          case "down": newPy = (this.y + 1) * tileSize - this.size; break;
-        }
-        this.moveCooldown = 20; // Attendre 20 frames avant de changer de direction
-        this.direction = null;
+      if (!canMoveTo(checkX, checkY)) {
+        return;
       }
 
-      this.px = newPx;
-      this.py = newPy;
-
-      // Mise à jour des coordonnées case à partir du centre
-      this.x = Math.floor((this.px + this.size / 2) / tileSize);
-      this.y = Math.floor((this.py + this.size / 2) / tileSize);
-    }
-
-    draw() {
-      // Fantôme simple: cercle rouge ou autre couleur
-      ctx.fillStyle = this.color;
-      ctx.beginPath();
-      ctx.arc(this.px + this.size / 2, this.py + this.size / 2, this.size / 2, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Yeux (blancs)
-      ctx.fillStyle = "white";
-      ctx.beginPath();
-      ctx.arc(this.px + this.size / 3, this.py + this.size / 3, this.size / 6, 0, Math.PI * 2);
-      ctx.arc(this.px + 2 * this.size / 3, this.py + this.size / 3, this.size / 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Pupilles (noires)
-      ctx.fillStyle = "black";
-      ctx.beginPath();
-      ctx.arc(this.px + this.size / 3, this.py + this.size / 3, this.size / 12, 0, Math.PI * 2);
-      ctx.arc(this.px + 2 * this.size / 3, this.py + this.size / 3, this.size / 12, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  const phantoms = [
-    new Phantom(10, 5, "red"),
-    new Phantom(15, 9, "cyan"),
-  ];
-
-  let score = 0;
-  const maxScore = map.flat().filter(x => x === 2).length;
-
-  let currentDirection = null;
-  let nextDirection = null;
-
-  let gameOver = false;
-
-  function canMoveTo(x, y) {
-    if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false;
-    return map[y][x] !== 1;
-  }
-
-  function tryChangeDirection() {
-    if (!nextDirection) return false;
-    let nx = player.x;
-    let ny = player.y;
-
-    switch (nextDirection) {
-      case "up": ny -= 1; break;
-      case "down": ny += 1; break;
-      case "left": nx -= 1; break;
-      case "right": nx += 1; break;
-    }
-    if (canMoveTo(nx, ny)) {
-      currentDirection = nextDirection;
-      nextDirection = null;
-      return true;
-    }
-    return false;
-  }
-
-  function update() {
-    if (gameOver) return;
-
-    if (!currentDirection) return;
-
-    tryChangeDirection();
-
-    const speed = 4;
-
-    let dx = 0, dy = 0;
-    switch (currentDirection) {
-      case "up": dy = -speed; break;
-      case "down": dy = speed; break;
-      case "left": dx = -speed; break;
-      case "right": dx = speed; break;
-    }
-
-    let newPx = player.px + dx;
-    let newPy = player.py + dy;
-
-    let checkX = player.x;
-    let checkY = player.y;
-
-    if (currentDirection === "left") {
-      checkX = Math.floor(newPx / tileSize);
-      checkY = player.y;
-    } else if (currentDirection === "right") {
-      checkX = Math.floor((newPx + player.size) / tileSize);
-      checkY = player.y;
-    } else if (currentDirection === "up") {
-      checkX = player.x;
-      checkY = Math.floor(newPy / tileSize);
-    } else if (currentDirection === "down") {
-      checkX = player.x;
-      checkY = Math.floor((newPy + player.size) / tileSize);
-    }
-
-    if (!canMoveTo(checkX, checkY)) {
-      switch (currentDirection) {
-        case "left":
-          newPx = (player.x) * tileSize;
-          break;
-        case "right":
-          newPx = (player.x + 1) * tileSize - player.size;
-          break;
-        case "up":
-          newPy = (player.y) * tileSize;
-          break;
-        case "down":
-          newPy = (player.y + 1) * tileSize - player.size;
-          break;
-      }
-      currentDirection = null;
-    } else {
       player.px = newPx;
       player.py = newPy;
-
       player.x = Math.floor((player.px + player.size / 2) / tileSize);
       player.y = Math.floor((player.py + player.size / 2) / tileSize);
 
@@ -359,48 +163,58 @@
         map[player.y][player.x] = 0;
         score++;
         document.getElementById("score").textContent = "Score: " + score;
-        if (score === maxScore) {
-          alert("You won! 🎉 Refresh to play again.");
-          gameOver = true;
+      }
+    }
+
+    function drawMap() {
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          switch (map[y][x]) {
+            case 1:
+              ctx.fillStyle = "#2222cc";
+              ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+              break;
+            case 2:
+              ctx.fillStyle = "#ff0";
+              ctx.beginPath();
+              ctx.arc(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2, tileSize / 8, 0, 2 * Math.PI);
+              ctx.fill();
+              break;
+            default:
+              ctx.fillStyle = "#000";
+              ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+              break;
+          }
         }
       }
     }
 
-    // Mise à jour des fantômes
-    phantoms.forEach(p => p.update());
-
-    // Collision fantômes / joueur
-    for (let p of phantoms) {
-      // Calcul distance simple (centre à centre)
-      const distX = Math.abs((player.px + player.size / 2) - (p.px + p.size / 2));
-      const distY = Math.abs((player.py + player.size / 2) - (p.py + p.size / 2));
-      if (distX < player.size * 0.6 && distY < player.size * 0.6) {
-        gameOver = true;
-        document.getElementById("gameover").style.display = "block";
-      }
+    function drawPlayer() {
+      ctx.drawImage(player.image, player.px, player.py, player.size, player.size);
     }
-  }
 
-  function drawMap() {
-    for (let y = 0; y < map.length; y++) {
-      for (let x = 0; x < map[y].length; x++) {
-        switch (map[y][x]) {
-          case 1:
-            ctx.fillStyle = "#2222cc";
-            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-            break;
-          case 2:
-            ctx.fillStyle = "#ff0";
-            ctx.beginPath();
-            ctx.arc(
-              x * tileSize + tileSize / 2,
-              y * tileSize + tileSize / 2,
-              tileSize / 8,
-              0,
-              2 * Math.PI
-            );
-            ctx.fill();
-            break;
-          default:
-            ctx.fillStyle = "#000";
-            ctx.fillRect(x * tileSize, y * tile
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      update();
+      drawMap();
+      drawPlayer();
+      requestAnimationFrame(loop);
+    }
+
+    loop();
+
+    document.addEventListener("keydown", (e) => {
+      switch (e.key) {
+        case "ArrowUp": nextDirection = "up"; break;
+        case "ArrowDown": nextDirection = "down"; break;
+        case "ArrowLeft": nextDirection = "left"; break;
+        case "ArrowRight": nextDirection = "right"; break;
+      }
+    });
+
+    function move(dir) {
+      nextDirection = dir;
+    }
+  </script>
+</body>
+</html>
