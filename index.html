@@ -86,7 +86,7 @@
     <button onclick="move('right')">➡️</button>
   </div>
   <div id="end-screen">
-    <div>🎉 Bravo ! Vous avez tout mangé !</div>
+    <div id="end-message">🎉 Bravo ! Vous avez tout mangé !</div>
     <button onclick="restartGame()">Rejouer</button>
   </div>
   <script>
@@ -126,9 +126,15 @@
     };
     player.image.src = "pacman.png";
 
+    const ghosts = [
+      { x: 9, y: 1, px: 9 * tileSize, py: 1 * tileSize, dir: 'left', color: 'red' },
+      { x: 9, y: 7, px: 9 * tileSize, py: 7 * tileSize, dir: 'up', color: 'cyan' }
+    ];
+
     let currentDirection = null;
     let nextDirection = null;
     let score = 0;
+    let gameOver = false;
 
     function canMoveTo(x, y) {
       if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false;
@@ -152,6 +158,7 @@
     }
 
     function update() {
+      if (gameOver) return;
       tryChangeDirection();
       if (!currentDirection) return;
 
@@ -188,6 +195,40 @@
         document.getElementById("score").textContent = "Score: " + score;
         checkWin();
       }
+
+      updateGhosts();
+      checkCollisions();
+    }
+
+    function updateGhosts() {
+      ghosts.forEach(ghost => {
+        const dirs = ['up', 'down', 'left', 'right'];
+        const dir = dirs[Math.floor(Math.random() * dirs.length)];
+        let gx = ghost.x;
+        let gy = ghost.y;
+        switch (dir) {
+          case "up": gy -= 1; break;
+          case "down": gy += 1; break;
+          case "left": gx -= 1; break;
+          case "right": gx += 1; break;
+        }
+        if (canMoveTo(gx, gy)) {
+          ghost.x = gx;
+          ghost.y = gy;
+          ghost.px = gx * tileSize;
+          ghost.py = gy * tileSize;
+        }
+      });
+    }
+
+    function checkCollisions() {
+      ghosts.forEach(g => {
+        if (player.x === g.x && player.y === g.y) {
+          gameOver = true;
+          document.getElementById("end-message").textContent = "💀 Game Over ! Le fantôme vous a attrapé !";
+          document.getElementById("end-screen").style.display = "flex";
+        }
+      });
     }
 
     function checkWin() {
@@ -196,6 +237,7 @@
           if (map[y][x] === 2) return;
         }
       }
+      document.getElementById("end-message").textContent = "🎉 Bravo ! Vous avez tout mangé !";
       document.getElementById("end-screen").style.display = "flex";
     }
 
@@ -208,6 +250,9 @@
       player.y = 1;
       player.px = tileSize;
       player.py = tileSize;
+      gameOver = false;
+      ghosts[0].x = 9; ghosts[0].y = 1; ghosts[0].px = 9 * tileSize; ghosts[0].py = 1 * tileSize;
+      ghosts[1].x = 9; ghosts[1].y = 7; ghosts[1].px = 9 * tileSize; ghosts[1].py = 7 * tileSize;
       document.getElementById("score").textContent = "Score: 0";
       document.getElementById("end-screen").style.display = "none";
     }
@@ -239,11 +284,21 @@
       ctx.drawImage(player.image, player.px, player.py, player.size, player.size);
     }
 
+    function drawGhosts() {
+      ghosts.forEach(g => {
+        ctx.fillStyle = g.color;
+        ctx.beginPath();
+        ctx.arc(g.px + tileSize / 2, g.py + tileSize / 2, tileSize / 2.5, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
+
     function loop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       update();
       drawMap();
       drawPlayer();
+      drawGhosts();
       requestAnimationFrame(loop);
     }
 
