@@ -1,109 +1,204 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pacman NFT</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: black;
-      overflow: hidden;
-    }
-
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-    }
-
-    #mobile-controls {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 15px;
-      z-index: 1000;
-    }
-
-    #mobile-controls button {
-      width: 60px;
-      height: 60px;
-      font-size: 24px;
-      border: none;
-      border-radius: 50%;
-      background: #ff0;
-      color: black;
-      font-weight: bold;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pacman NFT Jouable</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; overflow: hidden; background: black; height: 100%;
+  }
+  canvas {
+    display: block;
+    margin: 0 auto;
+    background: #111;
+    width: 100vw;
+    height: 100vh;
+  }
+  #mobile-controls {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    z-index: 10;
+  }
+  #mobile-controls button {
+    width: 60px; height: 60px;
+    font-size: 24px;
+    border-radius: 50%;
+    border: none;
+    background: #ff0;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
+  #score {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    color: #ff0;
+    font-family: monospace;
+    font-size: 20px;
+    z-index: 10;
+  }
+</style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
 
-  <div id="mobile-controls">
-    <button onclick="move('up')">⬆️</button>
-    <button onclick="move('left')">⬅️</button>
-    <button onclick="move('down')">⬇️</button>
-    <button onclick="move('right')">➡️</button>
-  </div>
+<canvas id="gameCanvas"></canvas>
 
- <script>
+<div id="score">Score: 0</div>
+
+<div id="mobile-controls">
+  <button onclick="move('up')">⬆️</button>
+  <button onclick="move('left')">⬅️</button>
+  <button onclick="move('down')">⬇️</button>
+  <button onclick="move('right')">➡️</button>
+</div>
+
+<script>
   const canvas = document.getElementById("gameCanvas");
   const ctx = canvas.getContext("2d");
 
-  function resizeCanvas() {
+  function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
   }
-  window.addEventListener("resize", resizeCanvas);
-  resizeCanvas();
+  window.addEventListener("resize", resize);
+  resize();
 
-  let pacman = {
-    x: 50,
-    y: 50,
-    size: 60,
-    speed: 5,
+  const tileSize = 40;
+
+  const map = [
+    [1,1,1,1,1,1,1,1,1,1,1,1],
+    [1,2,2,2,1,2,2,2,2,2,2,1],
+    [1,2,1,2,1,2,1,1,1,1,2,1],
+    [1,2,1,2,2,2,2,2,2,1,2,1],
+    [1,2,1,1,1,1,1,1,2,1,2,1],
+    [1,2,2,2,2,2,2,1,2,1,2,1],
+    [1,1,1,1,1,1,2,1,2,1,2,1],
+    [1,2,2,2,2,2,2,1,2,2,2,1],
+    [1,2,1,1,1,1,1,1,1,1,2,1],
+    [1,2,2,2,2,2,2,2,2,2,2,1],
+    [1,1,1,1,1,1,1,1,1,1,1,1],
+  ];
+
+  const player = {
+    x: 1,
+    y: 1,
+    size: tileSize*0.8,
+    speed: 1,
+    px: 1 * tileSize,
+    py: 1 * tileSize,
+    targetX: 1,
+    targetY: 1,
+    moving: false,
     image: new Image()
   };
-  pacman.image.src = "pacman.png"; // ✅ ton image ici
+  player.image.src = "pacman.png"; // Ton image custom ici
 
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(
-      pacman.image,
-      pacman.x - pacman.size / 2,
-      pacman.y - pacman.size / 2,
-      pacman.size,
-      pacman.size
-    );
+  let score = 0;
+  const maxScore = map.flat().filter(x=>x===2).length;
+
+  function drawMap(){
+    for(let y=0; y<map.length; y++){
+      for(let x=0; x<map[y].length; x++){
+        switch(map[y][x]){
+          case 1:
+            ctx.fillStyle = "#2222cc";
+            ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
+            break;
+          case 2:
+            ctx.fillStyle = "#ff0";
+            ctx.beginPath();
+            ctx.arc(x*tileSize + tileSize/2, y*tileSize + tileSize/2, tileSize/8, 0, 2*Math.PI);
+            ctx.fill();
+            break;
+          default:
+            ctx.fillStyle = "#000";
+            ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
+        }
+      }
+    }
   }
 
-  function gameLoop() {
+  function drawPlayer(){
+    ctx.drawImage(player.image, player.px, player.py, player.size, player.size);
+  }
+
+  function canMove(x,y){
+    if(y<0 || y>=map.length || x<0 || x>=map[0].length) return false;
+    return map[y][x] !== 1;
+  }
+
+  function move(direction){
+    if(player.moving) return;
+    let nx = player.targetX;
+    let ny = player.targetY;
+    switch(direction){
+      case "up": ny--; break;
+      case "down": ny++; break;
+      case "left": nx--; break;
+      case "right": nx++; break;
+    }
+    if(canMove(nx, ny)){
+      player.targetX = nx;
+      player.targetY = ny;
+      player.moving = true;
+    }
+  }
+
+  function update(){
+    if(player.moving){
+      let dx = player.targetX * tileSize - player.px;
+      let dy = player.targetY * tileSize - player.py;
+      const speed = 4;
+
+      if(Math.abs(dx) < speed && Math.abs(dy) < speed){
+        player.px = player.targetX * tileSize;
+        player.py = player.targetY * tileSize;
+        player.x = player.targetX;
+        player.y = player.targetY;
+        player.moving = false;
+
+        if(map[player.y][player.x] === 2){
+          map[player.y][player.x] = 0;
+          score++;
+          document.getElementById("score").textContent = "Score: " + score;
+          if(score === maxScore){
+            alert("You won! 🎉 Refresh to play again.");
+          }
+        }
+      } else {
+        player.px += dx > 0 ? speed : -speed;
+        player.py += dy > 0 ? speed : -speed;
+      }
+    }
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+    drawMap();
+    drawPlayer();
+  }
+
+  function gameLoop(){
+    update();
     draw();
     requestAnimationFrame(gameLoop);
   }
 
   gameLoop();
 
-  function move(direction) {
-    switch (direction) {
-      case 'up': pacman.y -= pacman.speed; break;
-      case 'down': pacman.y += pacman.speed; break;
-      case 'left': pacman.x -= pacman.speed; break;
-      case 'right': pacman.x += pacman.speed; break;
-    }
-  }
+  window.move = move;
 
-  window.addEventListener("keydown", (e) => {
-    switch (e.key) {
-      case 'ArrowUp': move('up'); break;
-      case 'ArrowDown': move('down'); break;
-      case 'ArrowLeft': move('left'); break;
-      case 'ArrowRight': move('right'); break;
+  window.addEventListener("keydown", e => {
+    switch(e.key){
+      case "ArrowUp": move("up"); break;
+      case "ArrowDown": move("down"); break;
+      case "ArrowLeft": move("left"); break;
+      case "ArrowRight": move("right"); break;
     }
   });
 </script>
