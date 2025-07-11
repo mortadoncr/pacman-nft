@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pacman NFT</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #mobile-controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      z-index: 1000;
+    }
+
+    #mobile-controls button {
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+      border: none;
+      border-radius: 50%;
+      background: #ff0;
+      color: black;
+      font-weight: bold;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas"></canvas>
+
+  <div id="mobile-controls">
+    <button onclick="move('up')">⬆️</button>
+    <button onclick="move('left')">⬅️</button>
+    <button onclick="move('down')">⬇️</button>
+    <button onclick="move('right')">➡️</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+
+    // Simplified Pacman placeholder game logic
+    let pacman = { x: 50, y: 50, size: 30, speed: 5 };
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "yellow";
+      ctx.beginPath();
+      ctx.arc(pacman.x, pacman.y, pacman.size, 0.25 * Math.PI, 1.75 * Math.PI);
+      ctx.lineTo(pacman.x, pacman.y);
+      ctx.fill();
+    }
+
+    function gameLoop() {
+      draw();
+      requestAnimationFrame(gameLoop);
+    }
+
+    gameLoop();
+
+    function move(direction) {
+      switch (direction) {
+        case 'up': pacman.y -= pacman.speed; break;
+        case 'down': pacman.y += pacman.speed; break;
+        case 'left': pacman.x -= pacman.speed; break;
+        case 'right': pacman.x += pacman.speed; break;
+      }
+    }
+
+    // Optional: keyboard support
+    window.addEventListener("keydown", (e) => {
+      switch (e.key) {
+        case 'ArrowUp': move('up'); break;
+        case 'ArrowDown': move('down'); break;
+        case 'ArrowLeft': move('left'); break;
+        case 'ArrowRight': move('right'); break;
+      }
+    });
+  </script>
+</body>
+</html>
