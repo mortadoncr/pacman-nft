@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pacman NFT Jouable</title>
+<title>Pacman NFT Jouable - Déplacement Continu</title>
 <style>
   html, body {
     margin: 0; padding: 0; overflow: hidden; background: black; height: 100%;
@@ -88,12 +88,8 @@
     x: 1,
     y: 1,
     size: tileSize*0.8,
-    speed: 1,
     px: 1 * tileSize,
     py: 1 * tileSize,
-    targetX: 1,
-    targetY: 1,
-    moving: false,
     image: new Image()
   };
   player.image.src = "pacman.png"; // Ton image custom ici
@@ -101,89 +97,133 @@
   let score = 0;
   const maxScore = map.flat().filter(x=>x===2).length;
 
-  function drawMap(){
-    for(let y=0; y<map.length; y++){
-      for(let x=0; x<map[y].length; x++){
-        switch(map[y][x]){
+  let currentDirection = null;   // direction actuelle
+  let nextDirection = null;      // direction souhaitée
+
+  function canMoveTo(x, y) {
+    if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false;
+    return map[y][x] !== 1;
+  }
+
+  function tryChangeDirection() {
+    if (!nextDirection) return false;
+    let nx = player.x;
+    let ny = player.y;
+
+    switch (nextDirection) {
+      case "up": ny -= 1; break;
+      case "down": ny += 1; break;
+      case "left": nx -= 1; break;
+      case "right": nx += 1; break;
+    }
+    if (canMoveTo(nx, ny)) {
+      currentDirection = nextDirection;
+      nextDirection = null;
+      return true;
+    }
+    return false;
+  }
+
+  function update() {
+    if (!currentDirection) return;
+
+    tryChangeDirection();
+
+    const speed = 4; // pixels/frame
+
+    let dx = 0, dy = 0;
+    switch (currentDirection) {
+      case "up": dy = -speed; break;
+      case "down": dy = speed; break;
+      case "left": dx = -speed; break;
+      case "right": dx = speed; break;
+    }
+
+    let newPx = player.px + dx;
+    let newPy = player.py + dy;
+
+    // Centre du joueur pour calcul case
+    let centerX = newPx + player.size / 2;
+    let centerY = newPy + player.size / 2;
+
+    let targetTileX = Math.floor(centerX / tileSize);
+    let targetTileY = Math.floor(centerY / tileSize);
+
+    if (!canMoveTo(targetTileX, targetTileY)) {
+      // Bloquer au bord de la case actuelle
+      switch (currentDirection) {
+        case "left":
+          newPx = player.x * tileSize;
+          break;
+        case "right":
+          newPx = player.x * tileSize;
+          break;
+        case "up":
+          newPy = player.y * tileSize;
+          break;
+        case "down":
+          newPy = player.y * tileSize;
+          break;
+      }
+      currentDirection = null;
+    } else {
+      player.px = newPx;
+      player.py = newPy;
+
+      player.x = Math.floor((player.px + player.size / 2) / tileSize);
+      player.y = Math.floor((player.py + player.size / 2) / tileSize);
+
+      // Ramasser les points
+      if (map[player.y][player.x] === 2) {
+        map[player.y][player.x] = 0;
+        score++;
+        document.getElementById("score").textContent = "Score: " + score;
+        if (score === maxScore) {
+          alert("You won! 🎉 Refresh to play again.");
+        }
+      }
+    }
+  }
+
+  function drawMap() {
+    for (let y = 0; y < map.length; y++) {
+      for (let x = 0; x < map[y].length; x++) {
+        switch (map[y][x]) {
           case 1:
             ctx.fillStyle = "#2222cc";
-            ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
+            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
             break;
           case 2:
             ctx.fillStyle = "#ff0";
             ctx.beginPath();
-            ctx.arc(x*tileSize + tileSize/2, y*tileSize + tileSize/2, tileSize/8, 0, 2*Math.PI);
+            ctx.arc(
+              x * tileSize + tileSize / 2,
+              y * tileSize + tileSize / 2,
+              tileSize / 8,
+              0,
+              2 * Math.PI
+            );
             ctx.fill();
             break;
           default:
             ctx.fillStyle = "#000";
-            ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
+            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
         }
       }
     }
   }
 
-  function drawPlayer(){
+  function drawPlayer() {
     ctx.drawImage(player.image, player.px, player.py, player.size, player.size);
   }
 
-  function canMove(x,y){
-    if(y<0 || y>=map.length || x<0 || x>=map[0].length) return false;
-    return map[y][x] !== 1;
-  }
-
-  function move(direction){
-    if(player.moving) return;
-    let nx = player.targetX;
-    let ny = player.targetY;
-    switch(direction){
-      case "up": ny--; break;
-      case "down": ny++; break;
-      case "left": nx--; break;
-      case "right": nx++; break;
-    }
-    if(canMove(nx, ny)){
-      player.targetX = nx;
-      player.targetY = ny;
-      player.moving = true;
-    }
-  }
-
-  function update(){
-    if(player.moving){
-      let dx = player.targetX * tileSize - player.px;
-      let dy = player.targetY * tileSize - player.py;
-      const speed = 4;
-
-      if(Math.abs(dx) < speed && Math.abs(dy) < speed){
-        player.px = player.targetX * tileSize;
-        player.py = player.targetY * tileSize;
-        player.x = player.targetX;
-        player.y = player.targetY;
-        player.moving = false;
-
-        if(map[player.y][player.x] === 2){
-          map[player.y][player.x] = 0;
-          score++;
-          document.getElementById("score").textContent = "Score: " + score;
-          if(score === maxScore){
-            alert("You won! 🎉 Refresh to play again.");
-          }
-        }
-      } else {
-        player.px += dx > 0 ? speed : -speed;
-        player.py += dy > 0 ? speed : -speed;
-      }
-    }
-  }
-
-  function draw(){
-    ctx.clearRect(0,0,canvas.width, canvas.height);
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawMap();
     drawPlayer();
   }
 
-  function gameLoop(){
+  function gameLoop() {
     update();
     draw();
     requestAnimationFrame(gameLoop);
@@ -191,17 +231,34 @@
 
   gameLoop();
 
+  // Fonction appelée par boutons mobiles et clavier
+  function move(dir) {
+    nextDirection = dir;
+    if (!currentDirection) {
+      currentDirection = nextDirection;
+      nextDirection = null;
+    }
+  }
   window.move = move;
 
-  window.addEventListener("keydown", e => {
-    switch(e.key){
-      case "ArrowUp": move("up"); break;
-      case "ArrowDown": move("down"); break;
-      case "ArrowLeft": move("left"); break;
-      case "ArrowRight": move("right"); break;
+  window.addEventListener("keydown", (e) => {
+    switch (e.key) {
+      case "ArrowUp":
+        move("up");
+        break;
+      case "ArrowDown":
+        move("down");
+        break;
+      case "ArrowLeft":
+        move("left");
+        break;
+      case "ArrowRight":
+        move("right");
+        break;
     }
   });
 </script>
 
 </body>
 </html>
+
