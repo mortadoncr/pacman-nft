@@ -1,348 +1,159 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Pacman NFT</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: black;
-      height: 100%;
-    }
-    canvas {
-      display: block;
-      margin: 0 auto;
-      background: #111;
-      width: 100vw;
-      height: 100vh;
-    }
-    #mobile-controls {
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      display: flex;
-      gap: 15px;
-      z-index: 10;
-    }
-    #mobile-controls button {
-      width: 60px;
-      height: 60px;
-      font-size: 24px;
-      border-radius: 50%;
-      border: none;
-      background: #ff0;
-      font-weight: bold;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    }
-    #score {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      color: #ff0;
-      font-family: monospace;
-      font-size: 20px;
-      z-index: 10;
-    }
-    #end-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
-      color: #ff0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      font-family: monospace;
-      font-size: 30px;
-      z-index: 20;
-      display: none;
-    }
-    #end-screen button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 20px;
-      background: #ff0;
-      border: none;
-      border-radius: 10px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pacman Simple</title>
+<style>
+  body, html {
+    margin: 0; padding: 0; overflow: hidden; background: black;
+    height: 100vh; display: flex; justify-content: center; align-items: center;
+  }
+  canvas {
+    background: #111;
+  }
+</style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
-  <div id="score">Score: 0</div>
-  <div id="mobile-controls">
-    <button onclick="move('up')">⬆️</button>
-    <button onclick="move('left')">⬅️</button>
-    <button onclick="move('down')">⬇️</button>
-    <button onclick="move('right')">➡️</button>
-  </div>
-  <div id="end-screen">
-    <div id="end-message">🎉 Bravo ! Vous avez tout mangé !</div>
-    <button onclick="restartGame()">Rejouer</button>
-  </div>
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
+<canvas id="canvas" width="440" height="360"></canvas>
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-    function resize() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    }
-    window.addEventListener("resize", resize);
-    resize();
+const tileSize = 40;
 
-    const tileSize = 40;
+const map = [
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,2,2,2,1,2,2,2,2,2,1],
+  [1,2,1,2,1,2,1,1,2,2,1],
+  [1,2,1,2,2,2,2,1,2,2,1],
+  [1,2,1,1,1,1,2,1,1,2,1],
+  [1,2,2,2,2,2,2,2,2,2,1],
+  [1,2,1,1,1,1,1,1,1,2,1],
+  [1,2,2,2,2,2,2,2,2,2,1],
+  [1,1,1,1,1,1,1,1,1,1,1]
+];
 
-    const originalMap = [
-      [1,1,1,1,1,1,1,1,1,1,1],
-      [1,2,2,2,1,2,2,2,2,2,1],
-      [1,2,1,2,1,2,1,1,2,2,1],
-      [1,2,1,2,2,2,2,1,2,2,1],
-      [1,2,1,1,1,1,2,1,1,2,1],
-      [1,2,2,2,2,2,2,2,2,2,1],
-      [1,2,1,1,1,1,1,1,1,2,1],
-      [1,2,2,2,2,2,2,2,2,2,1],
-      [1,1,1,1,1,1,1,1,1,1,1]
-    ];
+let player = {
+  x: 1,
+  y: 1,
+  px: 1 * tileSize,
+  py: 1 * tileSize,
+  size: tileSize * 0.8,
+  speed: 3,
+  dir: null,
+  nextDir: null
+};
 
-    let map = JSON.parse(JSON.stringify(originalMap));
+function canMoveTo(x, y) {
+  if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false;
+  return map[y][x] !== 1;
+}
 
-    const player = {
-      x: 1,
-      y: 1,
-      size: tileSize * 0.8,
-      px: 1 * tileSize,
-      py: 1 * tileSize,
-      image: new Image()
-    };
-    player.image.src = "pacman.png";
+function isAligned() {
+  // Check if player is aligned with grid (center of tile on both axes)
+  return (
+    Math.abs(player.px % tileSize) < 2 &&
+    Math.abs(player.py % tileSize) < 2
+  );
+}
 
-    let currentDirection = null;
-    let nextDirection = null;
-    let score = 0;
-    let gameOver = false;
+function tryChangeDirection() {
+  if (!player.nextDir) return;
+  
+  // For changing direction, player must be aligned on the axis perpendicular to movement
+  if (player.nextDir === "left" || player.nextDir === "right") {
+    if (Math.abs(player.py % tileSize) > 2) return;
+  }
+  if (player.nextDir === "up" || player.nextDir === "down") {
+    if (Math.abs(player.px % tileSize) > 2) return;
+  }
+  
+  // Calculate target tile if change direction possible
+  let targetX = player.x;
+  let targetY = player.y;
+  if (player.nextDir === "left") targetX--;
+  else if (player.nextDir === "right") targetX++;
+  else if (player.nextDir === "up") targetY--;
+  else if (player.nextDir === "down") targetY++;
+  
+  if (canMoveTo(targetX, targetY)) {
+    player.dir = player.nextDir;
+    player.nextDir = null;
+  }
+}
 
-    const ghosts = [
-      { x: 9, y: 1, px: 9 * tileSize, py: 1 * tileSize, dir: "left", color: "red" },
-      { x: 9, y: 7, px: 9 * tileSize, py: 7 * tileSize, dir: "up", color: "pink" }
-    ];
+function update() {
+  tryChangeDirection();
+  if (!player.dir) return;
+  
+  let dx = 0, dy = 0;
+  if (player.dir === "left") dx = -player.speed;
+  else if (player.dir === "right") dx = player.speed;
+  else if (player.dir === "up") dy = -player.speed;
+  else if (player.dir === "down") dy = player.speed;
+  
+  // Compute new pixel positions
+  let newPx = player.px + dx;
+  let newPy = player.py + dy;
+  
+  // Compute next tile based on direction and position after move
+  let nextTileX = Math.floor((newPx + player.size / 2) / tileSize);
+  let nextTileY = Math.floor((newPy + player.size / 2) / tileSize);
+  
+  if (canMoveTo(nextTileX, nextTileY)) {
+    player.px = newPx;
+    player.py = newPy;
+    player.x = nextTileX;
+    player.y = nextTileY;
+  } else {
+    // Stop if hits wall
+    player.dir = null;
+  }
+}
 
-    function canMoveTo(x, y) {
-      return !(y < 0 || y >= map.length || x < 0 || x >= map[0].length || map[y][x] === 1);
-    }
-
-    function tryChangeDirection() {
-      if (!nextDirection) return;
-      let nx = player.x, ny = player.y;
-      switch (nextDirection) {
-        case "up": ny -= 1; break;
-        case "down": ny += 1; break;
-        case "left": nx -= 1; break;
-        case "right": nx += 1; break;
-      }
-      if (canMoveTo(nx, ny)) {
-        currentDirection = nextDirection;
-        nextDirection = null;
-      }
-    }
-
-    function update() {
-      if (gameOver) return;
-      tryChangeDirection();
-      if (!currentDirection) return;
-
-      const speed = 4 * 1.3 / 3;
-      let dx = 0, dy = 0;
-      switch (currentDirection) {
-        case "up": dy = -speed; break;
-        case "down": dy = speed; break;
-        case "left": dx = -speed; break;
-        case "right": dx = speed; break;
-      }
-
-      let newPx = player.px + dx;
-      let newPy = player.py + dy;
-
-      let checkX = player.x;
-      let checkY = player.y;
-
-      if (currentDirection === "left") checkX = Math.floor(newPx / tileSize);
-      else if (currentDirection === "right") checkX = Math.floor((newPx + player.size) / tileSize);
-      else if (currentDirection === "up") checkY = Math.floor(newPy / tileSize);
-      else if (currentDirection === "down") checkY = Math.floor((newPy + player.size) / tileSize);
-
-      if (!canMoveTo(checkX, checkY)) return;
-
-      player.px = newPx;
-      player.py = newPy;
-      player.x = Math.floor((player.px + player.size / 2) / tileSize);
-      player.y = Math.floor((player.py + player.size / 2) / tileSize);
-
-      if (map[player.y][player.x] === 2) {
-        map[player.y][player.x] = 0;
-        score++;
-        document.getElementById("score").textContent = "Score: " + score;
-        checkWin();
-      }
-
-      updateGhosts();
-      checkGhostCollision();
-    }
-
-    function getAvailableDirections(x, y) {
-      const dirs = [];
-      if (canMoveTo(x + 1, y)) dirs.push("right");
-      if (canMoveTo(x - 1, y)) dirs.push("left");
-      if (canMoveTo(x, y + 1)) dirs.push("down");
-      if (canMoveTo(x, y - 1)) dirs.push("up");
-      return dirs;
-    }
-
-    function updateGhosts() {
-      ghosts.forEach(g => {
-        const speed = 1.3;
-        let dx = 0, dy = 0;
-
-        switch (g.dir) {
-          case "up": dy = -speed; break;
-          case "down": dy = speed; break;
-          case "left": dx = -speed; break;
-          case "right": dx = speed; break;
-        }
-
-        const nextX = g.px + dx;
-        const nextY = g.py + dy;
-        const tx = Math.floor((nextX + tileSize / 2) / tileSize);
-        const ty = Math.floor((nextY + tileSize / 2) / tileSize);
-
-        if (canMoveTo(tx, ty)) {
-          g.px = nextX;
-          g.py = nextY;
-          g.x = tx;
-          g.y = ty;
-        } else {
-          const options = getAvailableDirections(g.x, g.y);
-          g.dir = options[Math.floor(Math.random() * options.length)];
-        }
-      });
-    }
-
-    function checkGhostCollision() {
-      for (let g of ghosts) {
-        if (Math.abs(g.px - player.px) < tileSize * 0.5 &&
-            Math.abs(g.py - player.py) < tileSize * 0.5) {
-          document.getElementById("end-message").textContent = "💀 Game Over !";
-          document.getElementById("end-screen").style.display = "flex";
-          gameOver = true;
-        }
-      }
-    }
-
-    function checkWin() {
-      for (let y = 0; y < map.length; y++) {
-        for (let x = 0; x < map[y].length; x++) {
-          if (map[y][x] === 2) return;
-        }
-      }
-      document.getElementById("end-message").textContent = "🎉 Bravo ! Vous avez tout mangé !";
-      document.getElementById("end-screen").style.display = "flex";
-      gameOver = true;
-    }
-
-    function restartGame() {
-      map = JSON.parse(JSON.stringify(originalMap));
-      score = 0;
-      currentDirection = null;
-      nextDirection = null;
-      player.x = 1;
-      player.y = 1;
-      player.px = tileSize;
-      player.py = tileSize;
-      document.getElementById("score").textContent = "Score: 0";
-      document.getElementById("end-screen").style.display = "none";
-      gameOver = false;
-
-      ghosts[0].x = 9; ghosts[0].y = 1;
-      ghosts[0].px = 9 * tileSize;
-      ghosts[0].py = 1 * tileSize;
-      ghosts[0].dir = "left";
-
-      ghosts[1].x = 9; ghosts[1].y = 7;
-      ghosts[1].px = 9 * tileSize;
-      ghosts[1].py = 7 * tileSize;
-      ghosts[1].dir = "up";
-    }
-
-    function drawMap() {
-      for (let y = 0; y < map.length; y++) {
-        for (let x = 0; x < map[y].length; x++) {
-          switch (map[y][x]) {
-            case 1:
-              ctx.fillStyle = "#2222cc";
-              ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-              break;
-            case 2:
-              ctx.fillStyle = "#ff0";
-              ctx.beginPath();
-              ctx.arc(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2, tileSize / 8, 0, 2 * Math.PI);
-              ctx.fill();
-              break;
-            default:
-              ctx.fillStyle = "#000";
-              ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-              break;
-          }
-        }
-      }
-    }
-
-    function drawPlayer() {
-      ctx.drawImage(player.image, player.px, player.py, player.size, player.size);
-    }
-
-    function drawGhosts() {
-      ghosts.forEach(g => {
-        ctx.fillStyle = g.color;
+function drawMap() {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (map[y][x] === 1) {
+        ctx.fillStyle = "#2222cc";
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      } else if (map[y][x] === 2) {
+        ctx.fillStyle = "#ff0";
         ctx.beginPath();
-        ctx.arc(g.px + tileSize / 2, g.py + tileSize / 2, player.size / 2, 0, 2 * Math.PI);
+        ctx.arc(x * tileSize + tileSize/2, y * tileSize + tileSize/2, tileSize/8, 0, Math.PI*2);
         ctx.fill();
-      });
-    }
-
-    function loop() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      update();
-      drawMap();
-      drawPlayer();
-      drawGhosts();
-      requestAnimationFrame(loop);
-    }
-
-    player.image.onload = () => {
-      loop();
-    };
-
-    document.addEventListener("keydown", (e) => {
-      switch (e.key) {
-        case "ArrowUp": nextDirection = "up"; break;
-        case "ArrowDown": nextDirection = "down"; break;
-        case "ArrowLeft": nextDirection = "left"; break;
-        case "ArrowRight": nextDirection = "right"; break;
+      } else {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
       }
-    });
-
-    function move(dir) {
-      nextDirection = dir;
     }
-  </script>
+  }
+}
+
+function drawPlayer() {
+  ctx.fillStyle = "#ff0";
+  ctx.beginPath();
+  ctx.arc(player.px + player.size/2, player.py + player.size/2, player.size/2, 0, Math.PI*2);
+  ctx.fill();
+}
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawMap();
+  drawPlayer();
+  update();
+  requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft") player.nextDir = "left";
+  else if (e.key === "ArrowRight") player.nextDir = "right";
+  else if (e.key === "ArrowUp") player.nextDir = "up";
+  else if (e.key === "ArrowDown") player.nextDir = "down";
+});
+
+gameLoop();
+</script>
 </body>
 </html>
