@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Pacman NFT</title>
   <style>
     html, body {
@@ -86,7 +86,7 @@
     <button onclick="move('right')">➡️</button>
   </div>
   <div id="end-screen">
-    <div>🎉 Bravo ! Vous avez tout mangé !</div>
+    <div id="end-message">🎉 Bravo ! Vous avez tout mangé !</div>
     <button onclick="restartGame()">Rejouer</button>
   </div>
   <script>
@@ -129,16 +129,20 @@
     let currentDirection = null;
     let nextDirection = null;
     let score = 0;
+    let gameOver = false;
+
+    const ghosts = [
+      { x: 9, y: 1, px: 9 * tileSize, py: 1 * tileSize, dir: "left", color: "red" },
+      { x: 9, y: 7, px: 9 * tileSize, py: 7 * tileSize, dir: "up", color: "pink" }
+    ];
 
     function canMoveTo(x, y) {
-      if (y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false;
-      return map[y][x] !== 1;
+      return !(y < 0 || y >= map.length || x < 0 || x >= map[0].length || map[y][x] === 1);
     }
 
     function tryChangeDirection() {
       if (!nextDirection) return;
-      let nx = player.x;
-      let ny = player.y;
+      let nx = player.x, ny = player.y;
       switch (nextDirection) {
         case "up": ny -= 1; break;
         case "down": ny += 1; break;
@@ -152,6 +156,7 @@
     }
 
     function update() {
+      if (gameOver) return;
       tryChangeDirection();
       if (!currentDirection) return;
 
@@ -188,6 +193,58 @@
         document.getElementById("score").textContent = "Score: " + score;
         checkWin();
       }
+
+      updateGhosts();
+      checkGhostCollision();
+    }
+
+    function getAvailableDirections(x, y) {
+      const dirs = [];
+      if (canMoveTo(x + 1, y)) dirs.push("right");
+      if (canMoveTo(x - 1, y)) dirs.push("left");
+      if (canMoveTo(x, y + 1)) dirs.push("down");
+      if (canMoveTo(x, y - 1)) dirs.push("up");
+      return dirs;
+    }
+
+    function updateGhosts() {
+      ghosts.forEach(g => {
+        const speed = 1.3;
+        let dx = 0, dy = 0;
+
+        switch (g.dir) {
+          case "up": dy = -speed; break;
+          case "down": dy = speed; break;
+          case "left": dx = -speed; break;
+          case "right": dx = speed; break;
+        }
+
+        const nextX = g.px + dx;
+        const nextY = g.py + dy;
+        const tx = Math.floor((nextX + tileSize / 2) / tileSize);
+        const ty = Math.floor((nextY + tileSize / 2) / tileSize);
+
+        if (canMoveTo(tx, ty)) {
+          g.px = nextX;
+          g.py = nextY;
+          g.x = tx;
+          g.y = ty;
+        } else {
+          const options = getAvailableDirections(g.x, g.y);
+          g.dir = options[Math.floor(Math.random() * options.length)];
+        }
+      });
+    }
+
+    function checkGhostCollision() {
+      for (let g of ghosts) {
+        if (Math.abs(g.px - player.px) < tileSize * 0.5 &&
+            Math.abs(g.py - player.py) < tileSize * 0.5) {
+          document.getElementById("end-message").textContent = "💀 Game Over !";
+          document.getElementById("end-screen").style.display = "flex";
+          gameOver = true;
+        }
+      }
     }
 
     function checkWin() {
@@ -196,9 +253,9 @@
           if (map[y][x] === 2) return;
         }
       }
-      setTimeout(() => {
-        document.getElementById("end-screen").style.display = "flex";
-      }, 500);
+      document.getElementById("end-message").textContent = "🎉 Bravo ! Vous avez tout mangé !";
+      document.getElementById("end-screen").style.display = "flex";
+      gameOver = true;
     }
 
     function restartGame() {
@@ -212,6 +269,17 @@
       player.py = tileSize;
       document.getElementById("score").textContent = "Score: 0";
       document.getElementById("end-screen").style.display = "none";
+      gameOver = false;
+
+      ghosts[0].x = 9; ghosts[0].y = 1;
+      ghosts[0].px = 9 * tileSize;
+      ghosts[0].py = 1 * tileSize;
+      ghosts[0].dir = "left";
+
+      ghosts[1].x = 9; ghosts[1].y = 7;
+      ghosts[1].px = 9 * tileSize;
+      ghosts[1].py = 7 * tileSize;
+      ghosts[1].dir = "up";
     }
 
     function drawMap() {
@@ -241,11 +309,21 @@
       ctx.drawImage(player.image, player.px, player.py, player.size, player.size);
     }
 
+    function drawGhosts() {
+      ghosts.forEach(g => {
+        ctx.fillStyle = g.color;
+        ctx.beginPath();
+        ctx.arc(g.px + tileSize / 2, g.py + tileSize / 2, player.size / 2, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
+
     function loop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       update();
       drawMap();
       drawPlayer();
+      drawGhosts();
       requestAnimationFrame(loop);
     }
 
