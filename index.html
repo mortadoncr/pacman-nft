@@ -3,14 +3,18 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pacman simple</title>
+<title>Pacman simple auto</title>
 <style>
   body { margin: 0; background: black; }
-  canvas { display: block; margin: 0 auto; background: #111; }
+  canvas { display: block; margin: 0 auto; background: #111; cursor: pointer; }
+  #info {
+    color: white; font-family: monospace; text-align: center; margin-top: 10px;
+  }
 </style>
 </head>
 <body>
 <canvas id="game" width="440" height="360"></canvas>
+<div id="info">Use arrow keys to set direction. Click canvas to start/stop auto-move.</div>
 
 <script>
 const canvas = document.getElementById("game");
@@ -34,6 +38,9 @@ let pacman = {
   x: 1,
   y: 1,
 };
+
+let currentDirection = null;  // "left","right","up","down"
+let autoMove = false;
 
 function drawMap() {
   for(let y=0; y<map.length; y++){
@@ -62,21 +69,53 @@ function canMove(x,y){
   return map[y][x] !== 1;
 }
 
-window.addEventListener("keydown", e => {
+function movePacman(){
+  if(!currentDirection) return;
+
   let nx = pacman.x;
   let ny = pacman.y;
 
-  if(e.key === "ArrowLeft") nx--;
-  else if(e.key === "ArrowRight") nx++;
-  else if(e.key === "ArrowUp") ny--;
-  else if(e.key === "ArrowDown") ny++;
+  if(currentDirection === "left") nx--;
+  else if(currentDirection === "right") nx++;
+  else if(currentDirection === "up") ny--;
+  else if(currentDirection === "down") ny++;
 
   if(canMove(nx, ny)){
     pacman.x = nx;
     pacman.y = ny;
     draw();
+  } else {
+    // Bloqué par un mur, on stoppe autoMove
+    autoMove = false;
+  }
+}
+
+window.addEventListener("keydown", e => {
+  if(["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)){
+    switch(e.key){
+      case "ArrowLeft": currentDirection = "left"; break;
+      case "ArrowRight": currentDirection = "right"; break;
+      case "ArrowUp": currentDirection = "up"; break;
+      case "ArrowDown": currentDirection = "down"; break;
+    }
+    draw();
   }
 });
+
+canvas.addEventListener("click", () => {
+  if(currentDirection === null){
+    alert("Utilisez les flèches pour choisir une direction avant de lancer le déplacement automatique.");
+    return;
+  }
+  autoMove = !autoMove;
+});
+
+function loop(){
+  if(autoMove){
+    movePacman();
+  }
+  requestAnimationFrame(loop);
+}
 
 function draw(){
   drawMap();
@@ -84,7 +123,7 @@ function draw(){
 }
 
 draw();
+loop();
 </script>
-
 </body>
 </html>
