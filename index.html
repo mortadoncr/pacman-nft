@@ -1,36 +1,126 @@
-function updatePosition(){
-  if(!player.currentDirection) return;
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Pacman Simple</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+    }
+    canvas {
+      display: block;
+      margin: auto;
+      background: #111;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="gameCanvas" width="440" height="360"></canvas>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
 
-  let dx = 0, dy = 0;
-  switch(player.currentDirection){
-    case "left": dx = -player.speed; break;
-    case "right": dx = player.speed; break;
-    case "up": dy = -player.speed; break;
-    case "down": dy = player.speed; break;
-  }
+    const tileSize = 40;
+    const map = [
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,2,2,2,1,2,2,2,2,2,1],
+      [1,2,1,2,1,2,1,1,2,2,1],
+      [1,2,1,2,2,2,2,1,2,2,1],
+      [1,2,1,1,1,1,2,1,1,2,1],
+      [1,2,2,2,2,2,2,2,2,2,1],
+      [1,1,1,1,1,1,1,1,1,1,1]
+    ];
 
-  // Position proposée
-  const nextPx = player.px + dx;
-  const nextPy = player.py + dy;
+    const player = {
+      x: 1,
+      y: 1,
+      px: 1 * tileSize,
+      py: 1 * tileSize,
+      size: tileSize * 0.8,
+      speed: 2,
+      currentDirection: null,
+      color: "yellow"
+    };
 
-  // Centre de Pacman
-  const nextCenterX = nextPx + player.size / 2;
-  const nextCenterY = nextPy + player.size / 2;
+    function canMoveTo(x, y) {
+      return map[y] && map[y][x] !== 1;
+    }
 
-  // Case que le centre de Pacman occupera
-  const nextTileX = Math.floor(nextCenterX / tileSize);
-  const nextTileY = Math.floor(nextCenterY / tileSize);
+    function updatePosition() {
+      if (!player.currentDirection) return;
 
-  if (canMoveTo(nextTileX, nextTileY)) {
-    player.px = nextPx;
-    player.py = nextPy;
-    player.x = Math.floor((player.px + player.size/2) / tileSize);
-    player.y = Math.floor((player.py + player.size/2) / tileSize);
-  } else {
-    // Blocage : Snap au centre de la case actuelle
-    player.px = player.x * tileSize;
-    player.py = player.y * tileSize;
-    player.currentDirection = null; // Stoppe Pacman
-  }
-}
+      let dx = 0, dy = 0;
+      switch (player.currentDirection) {
+        case "left": dx = -player.speed; break;
+        case "right": dx = player.speed; break;
+        case "up": dy = -player.speed; break;
+        case "down": dy = player.speed; break;
+      }
 
+      const nextPx = player.px + dx;
+      const nextPy = player.py + dy;
+
+      const nextCenterX = nextPx + player.size / 2;
+      const nextCenterY = nextPy + player.size / 2;
+
+      const nextTileX = Math.floor(nextCenterX / tileSize);
+      const nextTileY = Math.floor(nextCenterY / tileSize);
+
+      if (canMoveTo(nextTileX, nextTileY)) {
+        player.px = nextPx;
+        player.py = nextPy;
+        player.x = Math.floor((player.px + player.size/2) / tileSize);
+        player.y = Math.floor((player.py + player.size/2) / tileSize);
+      } else {
+        // Snap au centre de la tuile actuelle
+        player.px = player.x * tileSize;
+        player.py = player.y * tileSize;
+        player.currentDirection = null;
+      }
+    }
+
+    function drawMap() {
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          if (map[y][x] === 1) {
+            ctx.fillStyle = "#2222cc";
+            ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+          } else if (map[y][x] === 2) {
+            ctx.fillStyle = "#ff0";
+            ctx.beginPath();
+            ctx.arc(x * tileSize + tileSize/2, y * tileSize + tileSize/2, 5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+      }
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = player.color;
+      ctx.beginPath();
+      ctx.arc(player.px + player.size / 2, player.py + player.size / 2, player.size / 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function loop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      updatePosition();
+      drawMap();
+      drawPlayer();
+      requestAnimationFrame(loop);
+    }
+
+    document.addEventListener("keydown", (e) => {
+      switch (e.key) {
+        case "ArrowLeft": player.currentDirection = "left"; break;
+        case "ArrowRight": player.currentDirection = "right"; break;
+        case "ArrowUp": player.currentDirection = "up"; break;
+        case "ArrowDown": player.currentDirection = "down"; break;
+      }
+    });
+
+    loop();
+  </script>
+</body>
+</html>
