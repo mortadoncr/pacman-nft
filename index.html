@@ -1,24 +1,25 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pacman fluide sans collage</title>
-<style>
-  body { margin: 0; background: black; }
-  canvas { display: block; margin: auto; background: #111; }
-  #score { color: #ff0; font-family: monospace; text-align: center; margin-top: 10px; }
-</style>
+  <meta charset="UTF-8" />
+  <title>Pacman - Déplacement corrigé</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: black; }
+    canvas { display: block; margin: 0 auto; background: #111; }
+    #score { position: absolute; top: 10px; left: 10px; color: #ff0; font-family: monospace; font-size: 20px; }
+  </style>
 </head>
 <body>
-<canvas id="game" width="440" height="360"></canvas>
+<canvas id="gameCanvas"></canvas>
 <div id="score">Score: 0</div>
+
 <script>
-const canvas = document.getElementById("game");
+const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+canvas.width = 600;
+canvas.height = 360;
 
 const tileSize = 40;
-
 const map = [
   [1,1,1,1,1,1,1,1,1,1,1],
   [1,2,2,2,1,2,2,2,2,2,1],
@@ -31,124 +32,178 @@ const map = [
   [1,1,1,1,1,1,1,1,1,1,1]
 ];
 
-let score = 0;
-
 const player = {
   x: 1,
   y: 1,
   px: 1 * tileSize,
   py: 1 * tileSize,
   size: tileSize * 0.8,
-  speed: 2.5,
+  speed: 2,
   currentDirection: null,
-  nextDirection: null
+  nextDirection: null,
+  image: new Image()
 };
+player.image.src = "pacman.png"; // Remplace si besoin
 
-function canMoveTo(x, y){
-  if(y < 0 || y >= map.length || x < 0 || x >= map[0].length) return false;
-  return map[y][x] !== 1;
+const ghosts = [
+  { x: 9, y: 1, px: 9 * tileSize, py: 1 * tileSize, dir: "left", color: "red" },
+  { x: 9, y: 7, px: 9 * tileSize, py: 7 * tileSize, dir: "up", color: "pink" }
+];
+
+let score = 0;
+let gameOver = false;
+
+function canMoveTo(x, y) {
+  return !(y < 0 || y >= map.length || x < 0 || x >= map[0].length || map[y][x] === 1);
 }
 
-function tryChangeDirection(){
-  if(!player.nextDirection) return;
-  // On essaie de tourner si on est aligné sur la grille
-  if(player.px % tileSize === 0 && player.py % tileSize === 0){
-    let nx = player.x;
-    let ny = player.y;
-    switch(player.nextDirection){
-      case "up": ny -= 1; break;
-      case "down": ny += 1; break;
-      case "left": nx -= 1; break;
-      case "right": nx += 1; break;
+function updatePosition() {
+  // Tentative de changement de direction
+  if (player.nextDirection) {
+    let testX = player.x;
+    let testY = player.y;
+    switch (player.nextDirection) {
+      case "left": testX--; break;
+      case "right": testX++; break;
+      case "up": testY--; break;
+      case "down": testY++; break;
     }
-    if(canMoveTo(nx, ny)){
+    if (canMoveTo(testX, testY)) {
       player.currentDirection = player.nextDirection;
       player.nextDirection = null;
     }
   }
-}
 
-function updatePosition(){
-  if(!player.currentDirection) return;
+  if (!player.currentDirection) return;
 
-  // On calcule la nouvelle position
   let dx = 0, dy = 0;
-  switch(player.currentDirection){
+  switch (player.currentDirection) {
     case "left": dx = -player.speed; break;
     case "right": dx = player.speed; break;
     case "up": dy = -player.speed; break;
     case "down": dy = player.speed; break;
   }
 
-  let newPx = player.px + dx;
-  let newPy = player.py + dy;
+  const nextPx = player.px + dx;
+  const nextPy = player.py + dy;
+  const nextCenterX = nextPx + player.size / 2;
+  const nextCenterY = nextPy + player.size / 2;
+  const nextTileX = Math.floor(nextCenterX / tileSize);
+  const nextTileY = Math.floor(nextCenterY / tileSize);
 
-  // Calcul des cases devant Pacman selon la direction
-  let checkX = Math.floor((newPx + player.size/2) / tileSize);
-  let checkY = Math.floor((newPy + player.size/2) / tileSize);
-
-  // Vérification mur
-  if(canMoveTo(checkX, checkY)){
-    player.px = newPx;
-    player.py = newPy;
-    player.x = Math.floor((player.px + player.size/2) / tileSize);
-    player.y = Math.floor((player.py + player.size/2) / tileSize);
+  if (canMoveTo(nextTileX, nextTileY)) {
+    player.px = nextPx;
+    player.py = nextPy;
+    player.x = Math.floor((player.px + player.size / 2) / tileSize);
+    player.y = Math.floor((player.py + player.size / 2) / tileSize);
   } else {
-    // On est bloqué contre un mur, on "snap" la position à la grille
     player.px = player.x * tileSize;
     player.py = player.y * tileSize;
-    player.currentDirection = null; // On stoppe le déplacement (tu peux enlever ça si tu veux)
+    player.currentDirection = null;
   }
 }
 
-function eatPellet(){
-  if(map[player.y][player.x] === 2){
+function updateGhosts() {
+  ghosts.forEach(g => {
+    const speed = 1.5;
+    let dx = 0, dy = 0;
+    switch (g.dir) {
+      case "left": dx = -speed; break;
+      case "right": dx = speed; break;
+      case "up": dy = -speed; break;
+      case "down": dy = speed; break;
+    }
+    const nextX = g.px + dx;
+    const nextY = g.py + dy;
+    const tx = Math.floor((nextX + tileSize / 2) / tileSize);
+    const ty = Math.floor((nextY + tileSize / 2) / tileSize);
+
+    if (canMoveTo(tx, ty)) {
+      g.px = nextX;
+      g.py = nextY;
+      g.x = tx;
+      g.y = ty;
+    } else {
+      const options = getAvailableDirections(g.x, g.y);
+      g.dir = options[Math.floor(Math.random() * options.length)];
+    }
+  });
+}
+
+function getAvailableDirections(x, y) {
+  const dirs = [];
+  if (canMoveTo(x + 1, y)) dirs.push("right");
+  if (canMoveTo(x - 1, y)) dirs.push("left");
+  if (canMoveTo(x, y + 1)) dirs.push("down");
+  if (canMoveTo(x, y - 1)) dirs.push("up");
+  return dirs;
+}
+
+function checkCollision() {
+  ghosts.forEach(g => {
+    if (Math.abs(g.px - player.px) < tileSize * 0.5 &&
+        Math.abs(g.py - player.py) < tileSize * 0.5) {
+      alert("💀 Game Over !");
+      gameOver = true;
+    }
+  });
+}
+
+function checkScore() {
+  if (map[player.y][player.x] === 2) {
     map[player.y][player.x] = 0;
     score++;
     document.getElementById("score").textContent = "Score: " + score;
   }
 }
 
-function drawMap(){
-  for(let y=0; y<map.length; y++){
-    for(let x=0; x<map[0].length; x++){
-      if(map[y][x] === 1){
+function drawMap() {
+  for (let y = 0; y < map.length; y++) {
+    for (let x = 0; x < map[y].length; x++) {
+      if (map[y][x] === 1) {
         ctx.fillStyle = "#2222cc";
-        ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
-      } else if(map[y][x] === 2){
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
+      } else if (map[y][x] === 2) {
         ctx.fillStyle = "#ff0";
         ctx.beginPath();
-        ctx.arc(x*tileSize+tileSize/2, y*tileSize+tileSize/2, tileSize/8, 0, Math.PI*2);
+        ctx.arc(x * tileSize + tileSize / 2, y * tileSize + tileSize / 2, tileSize / 8, 0, 2 * Math.PI);
         ctx.fill();
       } else {
         ctx.fillStyle = "#000";
-        ctx.fillRect(x*tileSize, y*tileSize, tileSize, tileSize);
+        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
       }
     }
   }
 }
 
-function drawPlayer(){
-  ctx.fillStyle = "yellow";
-  ctx.beginPath();
-  ctx.arc(player.px + player.size/2, player.py + player.size/2, player.size/2, 0, Math.PI*2);
-  ctx.fill();
+function drawPlayer() {
+  ctx.drawImage(player.image, player.px, player.py, player.size, player.size);
 }
 
-function gameLoop(){
-  tryChangeDirection();
-  updatePosition();
-  eatPellet();
+function drawGhosts() {
+  ghosts.forEach(g => {
+    ctx.fillStyle = g.color;
+    ctx.beginPath();
+    ctx.arc(g.px + tileSize / 2, g.py + tileSize / 2, player.size / 2, 0, 2 * Math.PI);
+    ctx.fill();
+  });
+}
 
+function gameLoop() {
+  if (gameOver) return;
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  updatePosition();
+  updateGhosts();
+  checkScore();
+  checkCollision();
   drawMap();
   drawPlayer();
-
+  drawGhosts();
   requestAnimationFrame(gameLoop);
 }
 
-document.addEventListener("keydown", e => {
-  switch(e.key){
+document.addEventListener("keydown", (e) => {
+  switch (e.key) {
     case "ArrowUp": player.nextDirection = "up"; break;
     case "ArrowDown": player.nextDirection = "down"; break;
     case "ArrowLeft": player.nextDirection = "left"; break;
@@ -156,7 +211,7 @@ document.addEventListener("keydown", e => {
   }
 });
 
-gameLoop();
+player.image.onload = () => gameLoop();
 </script>
 </body>
 </html>
