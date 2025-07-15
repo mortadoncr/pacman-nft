@@ -116,14 +116,14 @@
 
     let map = JSON.parse(JSON.stringify(originalMap));
 
-    const player = {
-      x: 1,
-      y: 1,
-      size: tileSize, // Agrandissement ici
-      px: 1 * tileSize,
-      py: 1 * tileSize,
-      image: new Image()
-    };
+   const player = {
+  x: 1,
+  y: 1,
+  size: tileSize * 1.2, // agrandissement encore plus important
+  px: 1 * tileSize,
+  py: 1 * tileSize,
+  image: new Image()
+};
     player.image.src = "pacman.png";
 
     let currentDirection = null;
