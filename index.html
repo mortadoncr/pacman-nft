@@ -8,14 +8,16 @@
     html, body {
       margin: 0;
       padding: 0;
+      overflow: hidden;
       background: black;
       height: 100%;
-      overflow: hidden;
     }
     canvas {
       display: block;
       margin: 0 auto;
       background: #111;
+      width: 100vw;
+      height: 100vh;
     }
     #mobile-controls {
       position: fixed;
@@ -84,7 +86,7 @@
     <button onclick="move('right')">➡️</button>
   </div>
   <div id="end-screen">
-    <div>🎉 Bravo ! Vous avez tout mangé !</div>
+    <div id="end-message">🎉 Bravo ! Vous avez tout mangé !</div>
     <button onclick="restartGame()">Rejouer</button>
   </div>
   <script>
@@ -118,8 +120,8 @@
       x: 1,
       y: 1,
       size: tileSize * 0.8,
-      px: tileSize,
-      py: tileSize,
+      px: 1 * tileSize,
+      py: 1 * tileSize,
       image: new Image()
     };
     player.image.src = "pacman.png";
@@ -127,53 +129,39 @@
     let currentDirection = null;
     let nextDirection = null;
     let score = 0;
+    let gameOver = false;
 
     const ghosts = [
-      { x: 5, y: 5, px: 5 * tileSize, py: 5 * tileSize, dir: "left", color: "red" },
-      { x: 9, y: 1, px: 9 * tileSize, py: 1 * tileSize, dir: "up", color: "cyan" }
+      { x: 9, y: 1, px: 9 * tileSize, py: 1 * tileSize, dir: "left", color: "red" },
+      { x: 9, y: 7, px: 9 * tileSize, py: 7 * tileSize, dir: "up", color: "pink" }
     ];
 
     function canMoveTo(x, y) {
-      return map[y] && map[y][x] !== 1;
+      return !(y < 0 || y >= map.length || x < 0 || x >= map[0].length || map[y][x] === 1);
     }
 
     function tryChangeDirection() {
       if (!nextDirection) return;
-
-      const centerX = player.px + player.size / 2;
-      const centerY = player.py + player.size / 2;
-      const alignedX = Math.abs(centerX % tileSize - tileSize / 2) < 2;
-      const alignedY = Math.abs(centerY % tileSize - tileSize / 2) < 2;
-
-      let nx = player.x;
-      let ny = player.y;
-
+      let nx = player.x, ny = player.y;
       switch (nextDirection) {
         case "up": ny -= 1; break;
         case "down": ny += 1; break;
         case "left": nx -= 1; break;
         case "right": nx += 1; break;
       }
-
-      if ((nextDirection === "left" || nextDirection === "right") && alignedY && canMoveTo(nx, ny)) {
+      if (canMoveTo(nx, ny)) {
         currentDirection = nextDirection;
         nextDirection = null;
-        player.py = Math.round(player.py / tileSize) * tileSize;
-      }
-      if ((nextDirection === "up" || nextDirection === "down") && alignedX && canMoveTo(nx, ny)) {
-        currentDirection = nextDirection;
-        nextDirection = null;
-        player.px = Math.round(player.px / tileSize) * tileSize;
       }
     }
 
     function update() {
+      if (gameOver) return;
       tryChangeDirection();
       if (!currentDirection) return;
 
-      const speed = 2;
+      const speed = 4 * 1.3 / 3;
       let dx = 0, dy = 0;
-
       switch (currentDirection) {
         case "up": dy = -speed; break;
         case "down": dy = speed; break;
@@ -181,30 +169,47 @@
         case "right": dx = speed; break;
       }
 
-      const newPx = player.px + dx;
-      const newPy = player.py + dy;
-      const newX = Math.floor((newPx + player.size / 2) / tileSize);
-      const newY = Math.floor((newPy + player.size / 2) / tileSize);
+      let newPx = player.px + dx;
+      let newPy = player.py + dy;
 
-      if (canMoveTo(newX, newY)) {
-        player.px = newPx;
-        player.py = newPy;
-        player.x = newX;
-        player.y = newY;
+      let checkX = player.x;
+      let checkY = player.y;
 
-        if (map[player.y][player.x] === 2) {
-          map[player.y][player.x] = 0;
-          score++;
-          document.getElementById("score").textContent = "Score: " + score;
-          checkWin();
-        }
+      if (currentDirection === "left") checkX = Math.floor(newPx / tileSize);
+      else if (currentDirection === "right") checkX = Math.floor((newPx + player.size) / tileSize);
+      else if (currentDirection === "up") checkY = Math.floor(newPy / tileSize);
+      else if (currentDirection === "down") checkY = Math.floor((newPy + player.size) / tileSize);
+
+      if (!canMoveTo(checkX, checkY)) return;
+
+      player.px = newPx;
+      player.py = newPy;
+      player.x = Math.floor((player.px + player.size / 2) / tileSize);
+      player.y = Math.floor((player.py + player.size / 2) / tileSize);
+
+      if (map[player.y][player.x] === 2) {
+        map[player.y][player.x] = 0;
+        score++;
+        document.getElementById("score").textContent = "Score: " + score;
+        checkWin();
       }
+
+      updateGhosts();
+      checkGhostCollision();
+    }
+
+    function getAvailableDirections(x, y) {
+      const dirs = [];
+      if (canMoveTo(x + 1, y)) dirs.push("right");
+      if (canMoveTo(x - 1, y)) dirs.push("left");
+      if (canMoveTo(x, y + 1)) dirs.push("down");
+      if (canMoveTo(x, y - 1)) dirs.push("up");
+      return dirs;
     }
 
     function updateGhosts() {
       ghosts.forEach(g => {
-        const dirs = ["up", "down", "left", "right"];
-        const speed = 1;
+        const speed = 1.3;
         let dx = 0, dy = 0;
 
         switch (g.dir) {
@@ -214,18 +219,67 @@
           case "right": dx = speed; break;
         }
 
-        const nextX = Math.floor((g.px + dx + tileSize / 2) / tileSize);
-        const nextY = Math.floor((g.py + dy + tileSize / 2) / tileSize);
+        const nextX = g.px + dx;
+        const nextY = g.py + dy;
+        const tx = Math.floor((nextX + tileSize / 2) / tileSize);
+        const ty = Math.floor((nextY + tileSize / 2) / tileSize);
 
-        if (canMoveTo(nextX, nextY)) {
-          g.px += dx;
-          g.py += dy;
-          g.x = nextX;
-          g.y = nextY;
+        if (canMoveTo(tx, ty)) {
+          g.px = nextX;
+          g.py = nextY;
+          g.x = tx;
+          g.y = ty;
         } else {
-          g.dir = dirs[Math.floor(Math.random() * 4)];
+          const options = getAvailableDirections(g.x, g.y);
+          g.dir = options[Math.floor(Math.random() * options.length)];
         }
       });
+    }
+
+    function checkGhostCollision() {
+      for (let g of ghosts) {
+        if (Math.abs(g.px - player.px) < tileSize * 0.5 &&
+            Math.abs(g.py - player.py) < tileSize * 0.5) {
+          document.getElementById("end-message").textContent = "💀 Game Over !";
+          document.getElementById("end-screen").style.display = "flex";
+          gameOver = true;
+        }
+      }
+    }
+
+    function checkWin() {
+      for (let y = 0; y < map.length; y++) {
+        for (let x = 0; x < map[y].length; x++) {
+          if (map[y][x] === 2) return;
+        }
+      }
+      document.getElementById("end-message").textContent = "🎉 Bravo ! Vous avez tout mangé !";
+      document.getElementById("end-screen").style.display = "flex";
+      gameOver = true;
+    }
+
+    function restartGame() {
+      map = JSON.parse(JSON.stringify(originalMap));
+      score = 0;
+      currentDirection = null;
+      nextDirection = null;
+      player.x = 1;
+      player.y = 1;
+      player.px = tileSize;
+      player.py = tileSize;
+      document.getElementById("score").textContent = "Score: 0";
+      document.getElementById("end-screen").style.display = "none";
+      gameOver = false;
+
+      ghosts[0].x = 9; ghosts[0].y = 1;
+      ghosts[0].px = 9 * tileSize;
+      ghosts[0].py = 1 * tileSize;
+      ghosts[0].dir = "left";
+
+      ghosts[1].x = 9; ghosts[1].y = 7;
+      ghosts[1].px = 9 * tileSize;
+      ghosts[1].py = 7 * tileSize;
+      ghosts[1].dir = "up";
     }
 
     function drawMap() {
@@ -259,46 +313,23 @@
       ghosts.forEach(g => {
         ctx.fillStyle = g.color;
         ctx.beginPath();
-        ctx.arc(g.px + tileSize / 2, g.py + tileSize / 2, tileSize / 2.5, 0, 2 * Math.PI);
+        ctx.arc(g.px + tileSize / 2, g.py + tileSize / 2, player.size / 2, 0, 2 * Math.PI);
         ctx.fill();
       });
-    }
-
-    function checkWin() {
-      for (let y = 0; y < map.length; y++) {
-        for (let x = 0; x < map[y].length; x++) {
-          if (map[y][x] === 2) return;
-        }
-      }
-      setTimeout(() => {
-        document.getElementById("end-screen").style.display = "flex";
-      }, 300);
-    }
-
-    function restartGame() {
-      map = JSON.parse(JSON.stringify(originalMap));
-      score = 0;
-      currentDirection = null;
-      nextDirection = null;
-      player.px = tileSize;
-      player.py = tileSize;
-      player.x = 1;
-      player.y = 1;
-      document.getElementById("score").textContent = "Score: 0";
-      document.getElementById("end-screen").style.display = "none";
     }
 
     function loop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       update();
-      updateGhosts();
       drawMap();
-      drawGhosts();
       drawPlayer();
+      drawGhosts();
       requestAnimationFrame(loop);
     }
 
-    player.image.onload = () => loop();
+    player.image.onload = () => {
+      loop();
+    };
 
     document.addEventListener("keydown", (e) => {
       switch (e.key) {
