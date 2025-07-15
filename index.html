@@ -2,66 +2,30 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Pacman simple</title>
+<title>Mini Pacman</title>
 <style>
-  body {
-    background: #000;
-    display: flex;
-    justify-content: center;
-    margin-top: 40px;
-  }
-  #game {
+  body { background: black; display:flex; justify-content:center; align-items:center; height:100vh; margin:0; }
+  #game { 
     display: grid;
-    grid-template-columns: repeat(20, 30px);
-    grid-template-rows: repeat(20, 30px);
+    grid-template-columns: repeat(10, 30px);
+    grid-template-rows: repeat(10, 30px);
     gap: 2px;
-    background: #111;
-    border: 4px solid #222;
   }
   .cell {
-    width: 30px;
-    height: 30px;
-    box-sizing: border-box;
+    width: 30px; height: 30px;
+    background: black;
+    border: 1px solid #222;
   }
   .wall {
-    background: #223;
-  }
-  .dot {
-    background: #111;
-    position: relative;
-  }
-  .dot::after {
-    content: '';
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: yellow;
+    background: #444;
   }
   .pacman {
     background: yellow;
     border-radius: 50%;
-    position: relative;
-  }
-  .pacman::before {
-    content: '';
-    position: absolute;
-    top: 7px;
-    left: 15px;
-    width: 0; 
-    height: 0; 
-    border-top: 8px solid transparent;
-    border-bottom: 8px solid transparent;
-    border-left: 15px solid black;
   }
   .ghost {
     background: red;
-    border-radius: 50% 50% 0 0;
-    position: relative;
-    box-shadow: 0 6px 0 0 white, 8px 6px 0 0 white;
+    border-radius: 50%;
   }
   .ghost.blue {
     background: blue;
@@ -69,168 +33,127 @@
 </style>
 </head>
 <body>
-
 <div id="game"></div>
 
 <script>
-  const width = 20;
-  const height = 20;
+  const width = 10, height = 10;
   const game = document.getElementById('game');
   let grid = [];
-  
-  // Carte simple : 0 = sol avec point, 1 = mur
-  // Créons une carte carrée avec murs autour
-  let map = [];
-  for(let i=0; i<height; i++) {
-    let row = [];
-    for(let j=0; j<width; j++) {
-      if(i === 0 || i === height-1 || j === 0 || j === width-1) {
-        row.push(1);
-      } else {
-        row.push(0);
-      }
-    }
-    map.push(row);
-  }
-  
-  // Ajouter quelques murs internes aléatoires
-  for(let i=2; i<height-2; i+=3) {
-    for(let j=2; j<width-2; j+=4) {
-      map[i][j] = 1;
-    }
-  }
 
-  // Initialisation affichage grille
+  // Carte simple : 1 = mur, 0 = sol
+  const map = [
+    [1,1,1,1,1,1,1,1,1,1],
+    [1,0,0,0,0,0,0,0,0,1],
+    [1,0,1,0,1,1,0,1,0,1],
+    [1,0,1,0,0,0,0,1,0,1],
+    [1,0,1,1,1,1,0,1,0,1],
+    [1,0,0,0,0,0,0,1,0,1],
+    [1,0,1,1,1,1,1,1,0,1],
+    [1,0,0,0,0,0,0,0,0,1],
+    [1,0,1,1,1,1,1,1,0,1],
+    [1,1,1,1,1,1,1,1,1,1],
+  ];
+
+  // Crée la grille visuelle
   function createGrid() {
     game.innerHTML = '';
     grid = [];
-    for(let i=0; i<height; i++) {
-      for(let j=0; j<width; j++) {
-        let cell = document.createElement('div');
+    for(let y=0; y<height; y++) {
+      for(let x=0; x<width; x++) {
+        const cell = document.createElement('div');
         cell.classList.add('cell');
-        if(map[i][j] === 1) cell.classList.add('wall');
-        else if(map[i][j] === 0) cell.classList.add('dot');
+        if(map[y][x] === 1) cell.classList.add('wall');
         game.appendChild(cell);
         grid.push(cell);
       }
     }
   }
-  
-  // Positions de Pacman et fantômes
+
+  // Convertit coords en index 1D
+  function idx(x,y) {
+    return y*width + x;
+  }
+
+  // Positions
   let pacman = {x:1, y:1};
   let ghosts = [
-    {x: width-2, y:1, color:'red'},
-    {x: 1, y: height-2, color:'blue'}
+    {x:8, y:1, color:'red'},
+    {x:8, y:7, color:'blue'}
   ];
-  
-  // Fonction pour convertir coord 2D en index 1D
-  function posToIndex(x,y) {
-    return y * width + x;
-  }
-  
+
   // Affiche Pacman et fantômes
-  function drawCharacters() {
-    // Clear previous
-    grid.forEach(cell => {
-      cell.classList.remove('pacman', 'ghost', 'blue');
+  function draw() {
+    grid.forEach(c => {
+      c.classList.remove('pacman', 'ghost', 'blue');
     });
-    // Pacman
-    grid[posToIndex(pacman.x, pacman.y)].classList.add('pacman');
-    // Fantômes
+    grid[idx(pacman.x, pacman.y)].classList.add('pacman');
     ghosts.forEach(g => {
-      let cls = 'ghost';
-      if(g.color === 'blue') cls += ' blue';
-      grid[posToIndex(g.x, g.y)].classList.add(...cls.split(' '));
+      const c = grid[idx(g.x, g.y)];
+      c.classList.add('ghost');
+      if(g.color === 'blue') c.classList.add('blue');
     });
   }
-  
-  // Gestion déplacement Pacman
+
+  // Déplacement pacman au clavier
   window.addEventListener('keydown', e => {
-    let newX = pacman.x;
-    let newY = pacman.y;
-    if(e.key === 'ArrowUp') newY--;
-    else if(e.key === 'ArrowDown') newY++;
-    else if(e.key === 'ArrowLeft') newX--;
-    else if(e.key === 'ArrowRight') newX++;
-    
-    if(map[newY] && map[newY][newX] === 0) {
-      pacman.x = newX;
-      pacman.y = newY;
-      // Manger point
-      map[newY][newX] = 2; // 2 = vide
-      updateGridDot(newX, newY);
+    let nx = pacman.x;
+    let ny = pacman.y;
+    if(e.key === 'ArrowUp') ny--;
+    else if(e.key === 'ArrowDown') ny++;
+    else if(e.key === 'ArrowLeft') nx--;
+    else if(e.key === 'ArrowRight') nx++;
+    if(map[ny] && map[ny][nx] === 0) {
+      pacman.x = nx;
+      pacman.y = ny;
     }
-    drawCharacters();
+    draw();
   });
-  
-  // Supprimer point après manger
-  function updateGridDot(x,y) {
-    let cell = grid[posToIndex(x,y)];
-    cell.classList.remove('dot');
-  }
-  
-  // Mouvement fantômes simple aléatoire
+
+  // Mouvement fantômes aléatoire
   function moveGhosts() {
+    const directions = [
+      {x:0,y:-1}, {x:0,y:1}, {x:-1,y:0}, {x:1,y:0}
+    ];
     ghosts.forEach(g => {
-      const directions = [
-        {x: 0, y:-1},
-        {x: 0, y: 1},
-        {x:-1, y: 0},
-        {x: 1, y: 0},
-      ];
-      let possibleMoves = directions.filter(d => {
-        let nx = g.x + d.x;
-        let ny = g.y + d.y;
-        return map[ny] && map[ny][nx] !== 1;
+      const moves = directions.filter(d => {
+        const nx = g.x + d.x;
+        const ny = g.y + d.y;
+        return map[ny] && map[ny][nx] === 0;
       });
-      if(possibleMoves.length > 0) {
-        let move = possibleMoves[Math.floor(Math.random()*possibleMoves.length)];
-        g.x += move.x;
-        g.y += move.y;
+      if(moves.length > 0) {
+        const m = moves[Math.floor(Math.random()*moves.length)];
+        g.x += m.x;
+        g.y += m.y;
       }
     });
   }
-  
-  // Vérifie collision Pacman et fantômes
+
+  // Check collision simple
   function checkCollision() {
-    for(let g of ghosts) {
+    for(const g of ghosts) {
       if(g.x === pacman.x && g.y === pacman.y) {
-        alert('Game Over !');
-        resetGame();
-        break;
+        alert('Game Over');
+        reset();
       }
     }
   }
-  
-  // Reset
-  function resetGame() {
+
+  function reset() {
     pacman = {x:1, y:1};
     ghosts = [
-      {x: width-2, y:1, color:'red'},
-      {x: 1, y: height-2, color:'blue'}
+      {x:8, y:1, color:'red'},
+      {x:8, y:7, color:'blue'}
     ];
-    // Reset map points
-    for(let i=1; i<height-1; i++) {
-      for(let j=1; j<width-1; j++) {
-        if(map[i][j] !== 1) map[i][j] = 0;
-      }
-    }
-    createGrid();
-    drawCharacters();
+    draw();
   }
-  
-  // Game loop fantômes + collision
-  function gameLoop() {
-    moveGhosts();
-    drawCharacters();
-    checkCollision();
-  }
-  
-  // Initialisation
-  createGrid();
-  drawCharacters();
-  setInterval(gameLoop, 500);
-</script>
 
+  createGrid();
+  draw();
+  setInterval(() => {
+    moveGhosts();
+    draw();
+    checkCollision();
+  }, 700);
+</script>
 </body>
 </html>
