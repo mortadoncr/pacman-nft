@@ -142,6 +142,19 @@
 
     function tryChangeDirection() {
       if (!nextDirection) return;
+
+      const tolerance = 2; // tolérance en pixels pour l'alignement
+
+      if (nextDirection === "up" || nextDirection === "down") {
+        // Pacman doit être aligné horizontalement (axe x)
+        const alignedX = Math.abs((player.px + player.size / 2) % tileSize - tileSize / 2) < tolerance;
+        if (!alignedX) return;
+      } else if (nextDirection === "left" || nextDirection === "right") {
+        // Pacman doit être aligné verticalement (axe y)
+        const alignedY = Math.abs((player.py + player.size / 2) % tileSize - tileSize / 2) < tolerance;
+        if (!alignedY) return;
+      }
+
       let nx = player.x, ny = player.y;
       switch (nextDirection) {
         case "up": ny -= 1; break;
@@ -313,26 +326,26 @@
       ghosts.forEach(g => {
         ctx.fillStyle = g.color;
         ctx.beginPath();
-        ctx.arc(g.px + tileSize / 2, g.py + tileSize / 2, player.size / 2, 0, 2 * Math.PI);
+        ctx.arc(g.px + tileSize / 2, g.py + tileSize / 2, tileSize * 0.4, 0, Math.PI * 2);
         ctx.fill();
       });
     }
 
-    function loop() {
+    function gameLoop() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      update();
       drawMap();
       drawPlayer();
       drawGhosts();
-      requestAnimationFrame(loop);
+      update();
+      requestAnimationFrame(gameLoop);
     }
 
-    player.image.onload = () => {
-      loop();
-    };
+    function move(dir) {
+      nextDirection = dir;
+    }
 
-    document.addEventListener("keydown", (e) => {
-      switch (e.key) {
+    window.addEventListener("keydown", e => {
+      switch(e.key) {
         case "ArrowUp": nextDirection = "up"; break;
         case "ArrowDown": nextDirection = "down"; break;
         case "ArrowLeft": nextDirection = "left"; break;
@@ -340,9 +353,9 @@
       }
     });
 
-    function move(dir) {
-      nextDirection = dir;
-    }
+    player.image.onload = () => {
+      gameLoop();
+    };
   </script>
 </body>
 </html>
