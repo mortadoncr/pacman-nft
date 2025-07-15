@@ -1,118 +1,36 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pacman Simple</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: black;
-    }
-    canvas {
-      display: block;
-      margin: 0 auto;
-      background: #111;
-    }
-  </style>
-</head>
-<body>
-<canvas id="gameCanvas" width="440" height="360"></canvas>
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-
-const tileSize = 40;
-const map = [
-  [1,1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,1,0,0,0,0,0,1],
-  [1,0,1,0,1,0,1,1,0,0,1],
-  [1,0,1,0,0,0,0,1,0,0,1],
-  [1,0,1,1,1,1,0,1,1,0,1],
-  [1,0,0,0,0,0,0,0,0,0,1],
-  [1,0,1,1,1,1,1,1,1,0,1],
-  [1,0,0,0,0,0,0,0,0,0,1],
-  [1,1,1,1,1,1,1,1,1,1,1]
-];
-
-const player = {
-  x: 1,
-  y: 1,
-  px: 1 * tileSize,
-  py: 1 * tileSize,
-  dir: null,
-  nextDir: null,
-  speed: 2,
-  size: tileSize * 0.8
-};
-
-function canMove(x, y) {
-  return map[y] && map[y][x] === 0;
-}
-
-function update() {
-  if (player.nextDir) {
-    const nx = player.x + (player.nextDir === "right" ? 1 : player.nextDir === "left" ? -1 : 0);
-    const ny = player.y + (player.nextDir === "down" ? 1 : player.nextDir === "up" ? -1 : 0);
-    if (canMove(nx, ny)) player.dir = player.nextDir;
-  }
+function updatePosition(){
+  if(!player.currentDirection) return;
 
   let dx = 0, dy = 0;
-  if (player.dir === "right") dx = player.speed;
-  else if (player.dir === "left") dx = -player.speed;
-  else if (player.dir === "up") dy = -player.speed;
-  else if (player.dir === "down") dy = player.speed;
+  switch(player.currentDirection){
+    case "left": dx = -player.speed; break;
+    case "right": dx = player.speed; break;
+    case "up": dy = -player.speed; break;
+    case "down": dy = player.speed; break;
+  }
 
-  const newPx = player.px + dx;
-  const newPy = player.py + dy;
-  const newX = Math.floor((newPx + player.size / 2) / tileSize);
-  const newY = Math.floor((newPy + player.size / 2) / tileSize);
+  // Position proposée
+  const nextPx = player.px + dx;
+  const nextPy = player.py + dy;
 
-  if (canMove(newX, newY)) {
-    player.px = newPx;
-    player.py = newPy;
-    player.x = newX;
-    player.y = newY;
+  // Centre de Pacman
+  const nextCenterX = nextPx + player.size / 2;
+  const nextCenterY = nextPy + player.size / 2;
+
+  // Case que le centre de Pacman occupera
+  const nextTileX = Math.floor(nextCenterX / tileSize);
+  const nextTileY = Math.floor(nextCenterY / tileSize);
+
+  if (canMoveTo(nextTileX, nextTileY)) {
+    player.px = nextPx;
+    player.py = nextPy;
+    player.x = Math.floor((player.px + player.size/2) / tileSize);
+    player.y = Math.floor((player.py + player.size/2) / tileSize);
   } else {
-    player.dir = null; // stop on wall
+    // Blocage : Snap au centre de la case actuelle
+    player.px = player.x * tileSize;
+    player.py = player.y * tileSize;
+    player.currentDirection = null; // Stoppe Pacman
   }
 }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Draw map
-  for (let y = 0; y < map.length; y++) {
-    for (let x = 0; x < map[y].length; x++) {
-      if (map[y][x] === 1) {
-        ctx.fillStyle = "blue";
-        ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize);
-      }
-    }
-  }
-
-  // Draw player
-  ctx.fillStyle = "yellow";
-  ctx.beginPath();
-  ctx.arc(player.px + tileSize / 2, player.py + tileSize / 2, player.size / 2, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-function loop() {
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-
-loop();
-
-document.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowRight") player.nextDir = "right";
-  if (e.key === "ArrowLeft") player.nextDir = "left";
-  if (e.key === "ArrowUp") player.nextDir = "up";
-  if (e.key === "ArrowDown") player.nextDir = "down";
-});
-</script>
-</body>
-</html>
